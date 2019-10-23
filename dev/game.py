@@ -25,30 +25,42 @@ class Player:
             return self.hand.count(card)
         elif strategy=='cautious':
             return 1
+        elif strategy=='random':
+            return choice(np.arange(self.hand.count(card)))+1
 
     def gamble(self, currentcard):
         #Pick a card (if it is the first npc to play)
         #and choose the amount of cards
         if not currentcard: #pick a card
             currentcard = self.pickcard()
-        #choose amount
-        amount = self.chooseamount(currentcard, choice(['aggressive','cautious']))
-        #remove from hand
-        cardstoremove = [i for i,n in enumerate(self.hand) if n==currentcard] #creats a list with indexes of the card chosen
-        cardstoremove = cardstoremove[:amount] #prohibits to remove from the list more cards than decided
-        for i in cardstoremove[::-1]:
-            self.hand.pop(i)
-        cardstostack = [currentcard]*amount
+
+        if not currentcard in self.hand: #bluff
+            bluffcard = self.hand.pop(choice(np.arange(len(self.hand)))) #pick one randomly
+            cardstostack = [bluffcard]
+        else:
+
+            #choose amount
+            amount = self.chooseamount(currentcard, choice(['aggressive','cautious','random']))
+            #remove from hand
+            cardstoremove = [i for i,n in enumerate(self.hand) if n==currentcard] #creats a list with indexes of the card chosen
+            cardstoremove = cardstoremove[:amount] #prohibits to remove from the list more cards than decided
+            for i in cardstoremove[::-1]:
+                self.hand.pop(i)
+                cardstostack = [currentcard]*amount
         return cardstostack,currentcard
 
     def evaluatedoubt(self, currentcard, turn, lenHand=None):
         #Check if it will doubt
-        if turn == 0: #self turn
+        if turn == 0: #its turn
             if currentcard:
                 if not currentcard in self.hand:
-                    return True
-        else:
-            if lenHand == 0:
+                    doubt = choice([0,0,0,0,0,1,1,1,1,1])
+                    if doubt==0:
+                        return False
+                    else:
+                        return True
+        else: #some other player's turn
+            if lenHand == 0: #if the player don't have cards left, doubt it
                 return True
             else:
                 doubt = choice([0,0,0,0,0,0,0,0,0,1])
@@ -121,11 +133,15 @@ class Game:
             print('%s hand:'%(player.name))
             player.printhand()
 
-    def printmovestats(self, player1, player2, cards, currentcard):
-        if len(cards) > 0:
+    def printmovestats(self, player1, cards, currentcard, player2=None, doubtwinner=None):
+        if not player2:
             print('%s played cards %s. Current card: %i' %(player1.name, cards, currentcard))
         else:
             print('%s doubted %s' %(player1.name, player2.name))
+            if doubtwinner==player1:
+                print('%s bluffed, %s was right' %(player2.name, player1.name))
+            else:
+                print('%s was telling the truth, %s was wrong' %(player2.name, player1.name))
 
 
     def playround(self):
@@ -160,20 +176,24 @@ class Game:
                 #Decide wether to gamble or to doubt
                 cards, currentcard = player.doubtorgamble(currentcard)
                 #Prints the player's decision
-                self.printmovestats(player, self.lastPlayer, cards, currentcard)
 
                 #If player doubted, check if the last player bluffed
                 if len(cards) == 0: #doubted
+
                     if lastHand == [currentcard]*len(lastHand):
                         player.hand += stack
+                        self.printmovestats(player, [], currentcard, self.lastPlayer, self.lastPlayer)
                     else:
                         self.lastPlayer.hand += stack
+
+                        self.printmovestats(player, [], currentcard, self.lastPlayer, player)
                     over = True
                     self.lastPlayer = player
                     break
 
                 #If the player decided to gamble, add cards to stack and check if the other players want to doubt the move
                 else: #played
+                    self.printmovestats(player, cards, currentcard, None)
                     lastHand = deepcopy(cards)
                     stack += lastHand
                     #Get the list of players that is not the current player
@@ -184,12 +204,13 @@ class Game:
                     for d_player in doubting_player:
                         doubt = d_player.evaluatedoubt(currentcard,  turn=1, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
                         if doubt:
-                            self.printmovestats(d_player, player, [], currentcard)
                             over = True
                             if lastHand == [currentcard]*len(lastHand):
+                                self.printmovestats(d_player, [], currentcard, player, player)
                                 d_player.hand += stack
                             else:
                                 #doubting_player.hand += stack
+                                self.printmovestats(d_player, [], currentcard, player, d_player)
                                 player.hand += stack
                             break
 
