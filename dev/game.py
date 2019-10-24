@@ -7,13 +7,31 @@ Created on Oct 2019
 import numpy as np
 from random import shuffle, choice
 from copy import deepcopy
-
+import matplotlib.pyplot as plt
 
 class Player:
 
     def __init__(self, name):
         self.name = name
-        self.hand = []
+        self.hand = [] #list of cards
+
+
+        #Emotions/sort of
+        self.handvisible = [] #list of cards that may be visible to other players
+        self.hvcardround = [] #the round number when the card was added to the hand visible
+        self.roundmemory = 0
+
+
+        #Stats
+        self.won = 0
+        self.gamewin = 0
+        self.roundswin = 0
+        self.doubts = 0
+        self.rightdoubts = 0
+        self.wrongdoubts = 0
+        self.bluffs = 0
+        self.bluffslost = 0
+        self.bluffswon = 0 #unnoticed
 
     def pickcard(self):
         #Pick a card of the hand
@@ -76,12 +94,51 @@ class Player:
         else:
             return self.gamble(currentcard) #gamble
 
+    def add2hand(self, cards):
+        self.hand += cards
+
+    def add2handvisible(self, cards, roundnumber, addall = True):
+        """
+        Add cards recently received to the visible list.
+        If addall is set to True it will add all cards from the last hand received (not the whole stack!). 
+        This occurs when the current player doubted some other player that was telling the truth
+        If addall is set to False it will add only the cards not previously stored in the visible list.
+        This occurs when the current player bluffed and other player doubted. Example: Player had the card number 3
+        in the visible list, then lost bluff with the couple of cards numbered 3 and 4. Only the card number 4 will
+        be added to the list.
+        """
+        if addall:
+            self.handvisible += cards
+            self.hvcardround += [roundnumber]*len(cards)
+        else:
+            for card in cards:
+                amountincards = cards.count(card)
+                amountvisible = self.handvisible.count(card)
+                if amountincards > amountvisible:
+                    self.handvisible += [card]*(amountincards-amountvisible)
+                    self.hvcardround += [roundnumber]*(amountincards-amountvisible)
+
+    def removefromhandvisible(self, cards):
+        """
+        Remove from the visible hand the cards passed as input.
+        This will occur when other player doubted but the current player was telling the truth
+        """
+        for card in cards:
+            try:
+                index = self.handvisible.index(card)
+                self.handvisible.pop(index)
+                self.hvcardround.pop(index)
+            except:
+                pass
 
     def totalcards(self):
         return len(self.hand)
 
     def printhand(self):
         print(self.hand)
+
+    def printvisiblehand(self):
+        print(self.handvisible)
 
 
 
@@ -120,6 +177,7 @@ class Game:
             self.printhands()
             print('End of round number %i' %(self.rounds))
             if gameover:
+                self.lastPlayer.won += 1
                 print('%s won.' %self.lastPlayer.name)
             print('-------------------------------')
 
@@ -128,10 +186,12 @@ class Game:
             #     soma += len(player.hand)
             # print('TOTAL CARDS IN HANDS = %i'%soma)
 
-    def printhands(self):
+    def printhands(self, printvisibles=True):
         for player in self.players:
             print('%s hand:'%(player.name))
             player.printhand()
+            if printvisibles:
+                player.printvisiblehand()
 
     def printmovestats(self, player1, cards, currentcard, player2=None, doubtwinner=None):
         if not player2:
@@ -179,14 +239,22 @@ class Game:
 
                 #If player doubted, check if the last player bluffed
                 if len(cards) == 0: #doubted
+                    player.doubts += 1
 
                     if lastHand == [currentcard]*len(lastHand):
-                        player.hand += stack
+                        player.add2hand(stack)
+                        player.add2handvisible(lastHand, self.rounds, addall = False)
+                        self.lastPlayer.removefromhandvisible(lastHand)
                         self.printmovestats(player, [], currentcard, self.lastPlayer, self.lastPlayer)
+                        self.lastPlayer.roundswin += 1
                     else:
-                        self.lastPlayer.hand += stack
-
+                        player.rightdoubts += 1
+                        self.lastPlayer.bluffslost += 1
+                        self.lastPlayer.add2hand(stack)
+                        self.lastPlayer.add2handvisible(lastHand, self.rounds, addall = False)
+                        player.removefromhandvisible(lastHand)
                         self.printmovestats(player, [], currentcard, self.lastPlayer, player)
+                        player.roundswin += 1
                     over = True
                     self.lastPlayer = player
                     break
@@ -196,6 +264,8 @@ class Game:
                     self.printmovestats(player, cards, currentcard, None)
                     lastHand = deepcopy(cards)
                     stack += lastHand
+                    if lastHand == [currentcard]*len(lastHand):
+                        player.bluffs += 1
                     #Get the list of players that is not the current player
                     doubting_player = [d_player for d_player in players if d_player != player]
                     #Shuffle the list (so that not the same player doubts every time)
@@ -204,18 +274,26 @@ class Game:
                     for d_player in doubting_player:
                         doubt = d_player.evaluatedoubt(currentcard,  turn=1, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
                         if doubt:
+                            d_player.doubts += 1
                             over = True
                             if lastHand == [currentcard]*len(lastHand):
                                 self.printmovestats(d_player, [], currentcard, player, player)
-                                d_player.hand += stack
+                                d_player.add2hand(stack)
+                                d_player.add2handvisible(lastHand, self.rounds, addall = False)
+                                player.removefromhandvisible(lastHand)
+                                player.roundswin += 1
                             else:
-                                #doubting_player.hand += stack
                                 self.printmovestats(d_player, [], currentcard, player, d_player)
-                                player.hand += stack
+                                player.add2hand(stack)
+                                player.add2handvisible(lastHand, self.rounds, addall = False)
+                                player.bluffslost += 1
+                                d_player.rightdoubts += 1
+                                d_player.roundswin += 1
                             break
 
                 self.lastPlayer = player
                 if len(self.lastPlayer.hand)==0:
+                    self.lastPlayer.roundswin += 1
                     return True #Gameover
                 if over: #If someone doubted, the round is over
                     break
@@ -260,9 +338,30 @@ class Deck:
         return shuffled
 
 
+def showresults(players):
+    roundswins = []
+    doubts = []
+    rightdoubts = []
+    bluffs = []
+    bluffslost = []
+    for player in players:
+        roundswins.append(player.roundswin)
+        doubts.append(player.doubts)
+        rightdoubts.append(player.rightdoubts)
+        bluffs.append(player.bluffs)
+        bluffslost.append(player.bluffslost)
+        if player.won:
+            print('%s won.' %(player.name))
+    for i,k in zip(['Winnings','Doubts', 'Right doubts', 'Bluffs', 'Bluffs lost'], [roundswins,doubts,rightdoubts,bluffs,bluffslost]):
+        print('%s:' %i)
+        for j,player in enumerate(players):
+            print('%s: %i' %(player.name, k[j]))
+
+
 deck = Deck(1)
 deck.printdeck()
 players = [Player('Player' + str(i+1)) for i in range(4)]
 print(players)
 game = Game(players, deck)
 game.playgame()
+showresults(players)
