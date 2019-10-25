@@ -9,18 +9,31 @@ from random import shuffle, choice
 from copy import deepcopy
 import matplotlib.pyplot as plt
 
+
+class Random:
+    def get(value):
+        """
+        Chance. Value = 0.8 = 80% chance
+        """
+        if value < 0 or value > 1:
+            raise Exception
+        else:
+            value = 1-value
+            return choice(np.clip([int(i/(value*10)) for i in range(10)],0,1))
+
 class Player:
 
-    def __init__(self, name):
+    def __init__(self, name, amountstrategy='random', willtodoubt=0.1, willtobluff=0.5):
         self.name = name
         self.hand = [] #list of cards
-
 
         #Emotions/sort of
         self.handvisible = [] #list of cards that may be visible to other players
         self.hvcardround = [] #the round number when the card was added to the hand visible
         self.roundmemory = 0
-
+        self.amountstrategy = amountstrategy
+        self.willtodoubt = willtodoubt
+        self.willtobluff = willtobluff
 
         #Stats
         self.won = 0
@@ -28,10 +41,17 @@ class Player:
         self.roundswin = 0
         self.doubts = 0
         self.rightdoubts = 0
-        self.wrongdoubts = 0
         self.bluffs = 0
         self.bluffslost = 0
-        self.bluffswon = 0 #unnoticed
+
+    def reset(self):
+        self.won = 0
+        self.gamewin = 0
+        self.roundswin = 0
+        self.doubts = 0
+        self.rightdoubts = 0
+        self.bluffs = 0
+        self.bluffslost = 0
 
     def pickcard(self):
         #Pick a card of the hand
@@ -39,12 +59,14 @@ class Player:
 
     def chooseamount(self, card, strategy='aggresive'):
         #Choose the amount of cards to play
-        if strategy=='aggressive':
+        if self.amountstrategy=='aggressive':
             return self.hand.count(card)
-        elif strategy=='cautious':
+        elif self.amountstrategy=='cautious':
             return 1
-        elif strategy=='random':
+        elif self.amountstrategy=='random':
             return choice(np.arange(self.hand.count(card)))+1
+        else:
+            raise Exception
 
     def gamble(self, currentcard):
         #Pick a card (if it is the first npc to play)
@@ -70,18 +92,19 @@ class Player:
     def evaluatedoubt(self, currentcard, turn, lenHand=None):
         #Check if it will doubt
         if turn == 0: #its turn
+
             if currentcard:
-                if not currentcard in self.hand:
-                    doubt = choice([0,0,0,0,0,1,1,1,1,1])
-                    if doubt==0:
-                        return False
-                    else:
-                        return True
+                #if not currentcard in self.hand:
+                doubt = Random.get(1-self.willtobluff)
+                if doubt==0:
+                    return False
+                else:
+                    return True
         else: #some other player's turn
             if lenHand == 0: #if the player don't have cards left, doubt it
                 return True
             else:
-                doubt = choice([0,0,0,0,0,0,0,0,0,1])
+                doubt = Random.get(self.willtodoubt)
                 if doubt==0:
                     return False
                 else:
@@ -165,21 +188,26 @@ class Game:
         self.lastPlayer = None
 
 
-    def playgame(self, maxrounds=1000):
+    def playgame(self, maxrounds=1000, printstats=True):
         gameover = False
         while self.rounds < maxrounds and not gameover:
-            print(' ')
-            print('Round number %i:' %(self.rounds+1))
-
-            gameover = self.playround()
-
-            print('-------------------------------')
-            self.printhands()
-            print('End of round number %i' %(self.rounds))
-            if gameover:
-                self.lastPlayer.won += 1
-                print('%s won.' %self.lastPlayer.name)
-            print('-------------------------------')
+            if printstats:
+                print(' ')
+                print('Round number %i:' %(self.rounds+1))
+    
+                gameover = self.playround(printstats)
+    
+                print('-------------------------------')
+                self.printhands()
+                print('End of round number %i' %(self.rounds))
+                if gameover:
+                    self.lastPlayer.won += 1
+                    print('%s won.' %self.lastPlayer.name)
+                print('-------------------------------')
+            else:
+                gameover = self.playround(printstats)
+                if gameover:
+                    self.lastPlayer.won += 1
 
             # soma = 0
             # for player in self.players:
@@ -204,17 +232,17 @@ class Game:
                 print('%s was telling the truth, %s was wrong' %(player2.name, player1.name))
 
 
-    def playround(self):
+    def playround(self, printstats=True):
         over = False #flag for round over (someone doubted)
         gameover = False #flag for game over (someone won)
         if self.rounds == 0:
             # Give cards
-            cards = deck.shuffledeck()
+            cards = self.deck.shuffledeck()
             while len(cards) > 0:
                 for player in self.players:
                     if len(cards) > 0:
                         player.hand.append(cards.pop())
-            self.printhands()
+            if printstats: self.printhands()
 
         lastHand = []
         stack = []
@@ -235,7 +263,6 @@ class Game:
             for player in orderPlayerList:
                 #Decide wether to gamble or to doubt
                 cards, currentcard = player.doubtorgamble(currentcard)
-                #Prints the player's decision
 
                 #If player doubted, check if the last player bluffed
                 if len(cards) == 0: #doubted
@@ -245,7 +272,7 @@ class Game:
                         player.add2hand(stack)
                         player.add2handvisible(lastHand, self.rounds, addall = False)
                         self.lastPlayer.removefromhandvisible(lastHand)
-                        self.printmovestats(player, [], currentcard, self.lastPlayer, self.lastPlayer)
+                        if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, self.lastPlayer)
                         self.lastPlayer.roundswin += 1
                     else:
                         player.rightdoubts += 1
@@ -253,7 +280,7 @@ class Game:
                         self.lastPlayer.add2hand(stack)
                         self.lastPlayer.add2handvisible(lastHand, self.rounds, addall = False)
                         player.removefromhandvisible(lastHand)
-                        self.printmovestats(player, [], currentcard, self.lastPlayer, player)
+                        if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, player)
                         player.roundswin += 1
                     over = True
                     self.lastPlayer = player
@@ -261,29 +288,30 @@ class Game:
 
                 #If the player decided to gamble, add cards to stack and check if the other players want to doubt the move
                 else: #played
-                    self.printmovestats(player, cards, currentcard, None)
+                    if printstats: self.printmovestats(player, cards, currentcard, None)
                     lastHand = deepcopy(cards)
                     stack += lastHand
-                    if lastHand == [currentcard]*len(lastHand):
+                    if lastHand != [currentcard]*len(lastHand):
                         player.bluffs += 1
                     #Get the list of players that is not the current player
-                    doubting_player = [d_player for d_player in players if d_player != player]
+                    doubting_player = [d_player for d_player in self.players if d_player != player]
                     #Shuffle the list (so that not the same player doubts every time)
                     shuffle(doubting_player)
                     #Check if player from the list wants to doubt
                     for d_player in doubting_player:
+                        doubt = False
                         doubt = d_player.evaluatedoubt(currentcard,  turn=1, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
                         if doubt:
                             d_player.doubts += 1
                             over = True
                             if lastHand == [currentcard]*len(lastHand):
-                                self.printmovestats(d_player, [], currentcard, player, player)
+                                if printstats: self.printmovestats(d_player, [], currentcard, player, player)
                                 d_player.add2hand(stack)
                                 d_player.add2handvisible(lastHand, self.rounds, addall = False)
                                 player.removefromhandvisible(lastHand)
                                 player.roundswin += 1
                             else:
-                                self.printmovestats(d_player, [], currentcard, player, d_player)
+                                if printstats: self.printmovestats(d_player, [], currentcard, player, d_player)
                                 player.add2hand(stack)
                                 player.add2handvisible(lastHand, self.rounds, addall = False)
                                 player.bluffslost += 1
@@ -293,7 +321,7 @@ class Game:
 
                 self.lastPlayer = player
                 if len(self.lastPlayer.hand)==0:
-                    self.lastPlayer.roundswin += 1
+                    self.rounds += 1
                     return True #Gameover
                 if over: #If someone doubted, the round is over
                     break
@@ -344,6 +372,7 @@ def showresults(players):
     rightdoubts = []
     bluffs = []
     bluffslost = []
+
     for player in players:
         roundswins.append(player.roundswin)
         doubts.append(player.doubts)
@@ -352,16 +381,40 @@ def showresults(players):
         bluffslost.append(player.bluffslost)
         if player.won:
             print('%s won.' %(player.name))
+    for player in players:
+        print('%s: %s. doubt: %.1f. bluff: %.1f.'%(player.name, player.amountstrategy, player.willtodoubt, player.willtobluff))
+
     for i,k in zip(['Winnings','Doubts', 'Right doubts', 'Bluffs', 'Bluffs lost'], [roundswins,doubts,rightdoubts,bluffs,bluffslost]):
         print('%s:' %i)
         for j,player in enumerate(players):
             print('%s: %i' %(player.name, k[j]))
 
 
-deck = Deck(1)
-deck.printdeck()
-players = [Player('Player' + str(i+1)) for i in range(4)]
-print(players)
-game = Game(players, deck)
-game.playgame()
-showresults(players)
+def simulategames(games=100, printstats=False):
+    deck = Deck(2)
+    #deck.printdeck()
+    players = [Player('Player' + str(i+1), amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0.3,0.3,0.3,0.3,0.3,0.3], [0.9,0.7,0.9,0.7,0.9,0.7])]
+    game = Game(players, deck)
+    for i in range(games):
+        shuffle(players)
+        game = Game(players, deck)
+        game.playgame(printstats=printstats)
+
+    fig, ax = plt.subplots(figsize=(8,8), dpi=150)
+
+    #plt.scatter(np.arange(1,7), [player.won for player in players])
+    plt.scatter([player.name for player in players], [player.won for player in players])
+    plt.show()
+    showresults(players)
+    return players
+    #showresults(players)
+    
+players = simulategames(100, False)
+# deck = Deck(2)
+# deck.printdeck()
+# players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
+# shuffle(players)
+# print(players)
+# game = Game(players, deck)
+# game.playgame()
+# showresults(players)
