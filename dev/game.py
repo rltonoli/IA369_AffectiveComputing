@@ -34,13 +34,15 @@ class Personality:
 
 
 class Emotion:
-    def __init__(self, valence, arousal):
+    def __init__(self, valence, arousal, frozen=False):
         self.valence = valence
         self.arousal = arousal
+        self.frozen = frozen
 
     def update(self, selfcontrol, event):
-        self.valence = clamp(self.valence + event.valence, -1, 1)
-        self.arousal = clamp(self.arousal + event.arousal * (1 - selfcontrol), -1, 1)
+        if not self.frozen:
+            self.valence = clamp(self.valence + event.valence, -1, 1)
+            self.arousal = clamp(self.arousal + event.arousal * (1 - selfcontrol), -1, 1)
 
 
 class Player:
@@ -78,34 +80,85 @@ class Player:
         self.bluffs = 0
         self.bluffslost = 0
 
+    # reset player game state when a new game start
+    def start(self):
+        self.hand = []
+        self.handvisible = []
+
     def pickcard(self):
         #Pick a card of the hand
         return choice(self.hand)
 
-    def chooseamount(self, card, strategy='aggresive'):
-        #Choose the amount of cards to play
-        if self.amountstrategy=='aggressive':
-            return self.hand.count(card)
-        elif self.amountstrategy=='cautious':
-            return 1
-        elif self.amountstrategy=='random':
-            return choice(np.arange(self.hand.count(card)))+1
-        else:
-            raise Exception
+    def chooseamount(self, card, printstats=True):
 
-    def gamble(self, currentcard):
+        total = self.hand.count(card)
+        count = 1
+
+        # if the amount of cards in hand is greater that 1: calculate, else play 1 card
+        if total > 1:
+            if not self.emotion.frozen:
+                count = total * (self.personality.haste + self.emotion.arousal * (1 - self.personality.selfcontrol))
+                # the amount of cards to play has to be in the range of 1 and the total amount of this card, and has to be integer
+                count = round(clamp(count, 1, total))
+            # if the emotions are frozen pick a random amount of card
+            else:
+                count = choice(np.arange(total)) + 1
+
+        if printstats:
+            print("True cards count: %s with haste: %s, selfcontrol: %s and arousal %s" % (
+            count, self.personality.haste, self.personality.selfcontrol, self.emotion.arousal))
+
+        return count
+
+        # #Choose the amount of cards to play
+        # if self.amountstrategy=='aggressive':
+        #     return self.hand.count(card)
+        # elif self.amountstrategy=='cautious':
+        #     return 1
+        # elif self.amountstrategy=='random':
+        #     return choice(np.arange(self.hand.count(card)))+1
+        # else:
+        #     raise Exception
+
+    def chooseamountbluff(self, printstats=True):
+
+        total = len(self.hand)
+        max = min(total, 4)
+        count = 1
+
+        # # if the amount of cards in hand is greater that 1: calculate, else play 1 card
+        if total > 1:
+            if not self.emotion.frozen:
+                count = max * (self.personality.haste + self.emotion.arousal * (1 - self.personality.selfcontrol))
+                # the amount of cards to play has to be in the range of 1 and the total amount of this card, and has to be integer
+                count = round(clamp(count, 1, max))
+            # if the emotions are frozen pick a random amount of card
+            else:
+                count = choice(np.arange(max)) + 1
+
+        if printstats:
+            print("Bluff cards count: %s with haste: %s, selfcontrol: %s and arousal %s" %(count, self.personality.haste, self.personality.selfcontrol, self.emotion.arousal))
+
+        return count
+
+
+    def gamble(self, currentcard, printstats = True):
         #Pick a card (if it is the first npc to play)
         #and choose the amount of cards
         if not currentcard: #pick a card
             currentcard = self.pickcard()
 
         if not currentcard in self.hand: #bluff
-            bluffcard = self.hand.pop(choice(np.arange(len(self.hand)))) #pick one randomly
-            cardstostack = [bluffcard]
+            amount = self.chooseamountbluff(printstats)
+            cardstostack = []
+            for i in range(amount):
+                # todo change the way is selected the card to play (tomada de decisao quais cartas jogar no blefe)
+                bluffcard = self.hand.pop(choice(np.arange(len(self.hand)))) #pick one randomly
+                cardstostack.append(bluffcard)
         else:
 
             #choose amount
-            amount = self.chooseamount(currentcard, choice(['aggressive','cautious','random']))
+            amount = self.chooseamount(currentcard, printstats)
             #remove from hand
             cardstoremove = [i for i,n in enumerate(self.hand) if n==currentcard] #creats a list with indexes of the card chosen
             cardstoremove = cardstoremove[:amount] #prohibits to remove from the list more cards than decided
@@ -135,12 +188,12 @@ class Player:
                 else:
                     return True
 
-    def doubtorgamble(self, currentcard):
+    def doubtorgamble(self, currentcard, printstats):
         #Decide wether to doubt or play
         if self.evaluatedoubt(currentcard,turn=0):
             return [],currentcard #doubt
         else:
-            return self.gamble(currentcard) #gamble
+            return self.gamble(currentcard, printstats) #gamble
 
     def add2hand(self, cards):
         self.hand += cards
@@ -219,9 +272,9 @@ class Game:
             if printstats:
                 print(' ')
                 print('Round number %i:' %(self.rounds+1))
-    
+
                 gameover = self.playround(printstats)
-    
+
                 print('-------------------------------')
                 self.printhands()
                 print('End of round number %i' %(self.rounds))
@@ -287,7 +340,7 @@ class Game:
             #Performs each player's move
             for player in orderPlayerList:
                 #Decide wether to gamble or to doubt
-                cards, currentcard = player.doubtorgamble(currentcard)
+                cards, currentcard = player.doubtorgamble(currentcard, printstats)
 
                 #If player doubted, check if the last player bluffed
                 if len(cards) == 0: #doubted
@@ -415,6 +468,14 @@ def showresults(players):
             print('%s: %i' %(player.name, k[j]))
 
 
+# prepare players for the next game
+def prepareplayers(players):
+    shuffle(players)
+    for player in players:
+        # reset player info from past game
+        player.start()
+
+
 def simulategames(games=100, printstats=False):
     deck = Deck(2)
     #deck.printdeck()
@@ -422,7 +483,7 @@ def simulategames(games=100, printstats=False):
 
     game = Game(players, deck)
     for i in range(games):
-        shuffle(players)
+        prepareplayers(players)
         game = Game(players, deck)
         game.playgame(printstats=printstats)
 
@@ -434,7 +495,7 @@ def simulategames(games=100, printstats=False):
     showresults(players)
     return players
     #showresults(players)
-    
+
 players = simulategames(100, False)
 # deck = Deck(2)
 # deck.printdeck()
