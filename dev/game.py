@@ -5,7 +5,7 @@ Created on Oct 2019
 @authors: Giancarlo Schaffer Torres Junior; Liz Mercedes Falcón Rivadulla; Rodolfo Luis Tonoli
 """
 import numpy as np
-from random import shuffle, choice
+from random import shuffle, choice, uniform
 from copy import deepcopy
 import matplotlib.pyplot as plt
 
@@ -418,7 +418,8 @@ def showresults(players):
 def simulategames(games=100, printstats=False):
     deck = Deck(2)
     #deck.printdeck()
-    players = [Player('Player' + str(i+1), amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0.3,0.3,0.3,0.3,0.3,0.3], [0.9,0.7,0.9,0.7,0.9,0.7])]
+    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0, 1), uniform(0, 1)), amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0.3,0.3,0.3,0.3,0.3,0.3], [0.9,0.7,0.9,0.7,0.9,0.7])]
+
     game = Game(players, deck)
     for i in range(games):
         shuffle(players)
