@@ -21,11 +21,36 @@ class Random:
             value = 1-value
             return choice(np.clip([int(i/(value*10)) for i in range(10)],0,1))
 
+
+def clamp(value, minvalue, maxvalue):
+    return max(min(maxvalue, value), minvalue)
+
+
+class Personality:
+    def __init__(self, haste, memory, selfcontrol):
+        self.haste = haste
+        self.memory = memory
+        self.selfcontrol = selfcontrol
+
+
+class Emotion:
+    def __init__(self, valence, arousal):
+        self.valence = valence
+        self.arousal = arousal
+
+    def update(self, selfcontrol, event):
+        self.valence = clamp(self.valence + event.valence, -1, 1)
+        self.arousal = clamp(self.arousal + event.arousal * (1 - selfcontrol), -1, 1)
+
+
 class Player:
 
-    def __init__(self, name, amountstrategy='random', willtodoubt=0.1, willtobluff=0.5):
+    def __init__(self, name, personality=Personality(1,1,1), emotion=Emotion(0,0), amountstrategy='random', willtodoubt=0.1, willtobluff=0.5):
         self.name = name
         self.hand = [] #list of cards
+
+        self.emotion = emotion
+        self.personality = personality
 
         #Emotions/sort of
         self.handvisible = [] #list of cards that may be visible to other players
