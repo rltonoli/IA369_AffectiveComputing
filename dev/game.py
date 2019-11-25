@@ -16,7 +16,7 @@ class Random:
         Chance. Value = 0.8 = 80% chance
         """
         if value < 0 or value > 1:
-            raise Exception
+            raise ValueError
         else:
             value = 1-value
             return choice(np.clip([int(i/(value*10)) for i in range(10)],0,1))
@@ -43,6 +43,23 @@ class Emotion:
         if not self.frozen:
             self.valence = clamp(self.valence + event.valence, -1, 1)
             self.arousal = clamp(self.arousal + event.arousal * (1 - selfcontrol), -1, 1)
+
+class Event:
+    events = []
+
+    def __init__(self, name, description, valence, arousal):
+        self.name = name
+        self.description = description
+        self.valence = valence
+        self.arousal = arousal
+        self.events.append(self)
+
+    @classmethod
+    def getEvent(cls, name):
+        for event in cls.events:
+            if name == event.name:
+                return event
+        raise Exception
 
 
 class Player:
@@ -84,6 +101,22 @@ class Player:
     def start(self):
         self.hand = []
         self.handvisible = []
+
+    def react2event(self, event):
+        """
+        Update emotions accordingly to the event.
+
+        Parameters
+        ----------
+        event : Event
+            Event object
+
+        Returns
+        -------
+        None.
+
+        """
+        self.emotion.update(self.personality.selfcontrol, event)
 
     def pickcard(self):
         #Pick a card of the hand
@@ -266,6 +299,8 @@ class Game:
         self.lastPlayer = None
 
 
+
+
     def playgame(self, maxrounds=1000, printstats=True):
         gameover = False
         while self.rounds < maxrounds and not gameover:
@@ -328,8 +363,6 @@ class Game:
 
         #Keeps playing until someone doubts or win
         while not over:
-
-
             #Creates the list of player starting from the next player (the first round starts with Player 1, than 2, 3,...)
             if self.lastPlayer:
                 currentPlayerIndex = self.players.index(self.lastPlayer) + 1
@@ -346,18 +379,19 @@ class Game:
                 if len(cards) == 0: #doubted
                     player.doubts += 1
 
-                    if lastHand == [currentcard]*len(lastHand):
+                    if lastHand == [currentcard]*len(lastHand): #Last player was telling the truth
                         player.add2hand(stack)
                         player.add2handvisible(lastHand, self.rounds, addall = False)
                         self.lastPlayer.removefromhandvisible(lastHand)
                         if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, self.lastPlayer)
                         self.lastPlayer.roundswin += 1
-                    else:
+                    else: #Last player was bluffing
                         player.rightdoubts += 1
                         self.lastPlayer.bluffslost += 1
                         self.lastPlayer.add2hand(stack)
                         self.lastPlayer.add2handvisible(lastHand, self.rounds, addall = False)
                         player.removefromhandvisible(lastHand)
+                        #self.lastPlayer.react2event()
                         if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, player)
                         player.roundswin += 1
                     over = True
@@ -481,6 +515,8 @@ def simulategames(games=100, printstats=False):
     #deck.printdeck()
     players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0, 1), uniform(0, 1)), amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0.3,0.3,0.3,0.3,0.3,0.3], [0.9,0.7,0.9,0.7,0.9,0.7])]
 
+
+
     game = Game(players, deck)
     for i in range(games):
         prepareplayers(players)
@@ -495,6 +531,26 @@ def simulategames(games=100, printstats=False):
     showresults(players)
     return players
     #showresults(players)
+
+#Events definition (adding names to create the log)
+Event('RoundWon','Won the round', valence = 0.2, arousal = 0.1)
+Event('BluffCaught','Was caught bluffing', valence = -0.2, arousal = 0.1)
+Event('CaughtSomeonesBluff','Caught someone bluffing', valence = 0.1, arousal = 0.1)
+Event('RoundLost','Lost the round', valence = -0.1, arousal = -0.1)
+Event('IClose2Win','Is close to win', valence = 0.1, arousal = 0.2)
+Event('SomeoneClose2Win','Someone is close to win', valence = -0.1, arousal = 0.2)
+Event('WonDoubt','Doubted someone and was right', valence = 0.1, arousal = 0.1)
+Event('LostDoubt','Doubted someone and was wrong', valence = -0.1, arousal = -0.1)
+Event('BluffOK','Bluffed and no one noticed', valence = 0.1, arousal = 0)
+# e_WonRound = Event('Won the round', valence = 0.2, arousal = 0.1)
+# e_WasCaughtBluffing = Event('Was caught bluffing', valence = -0.2, arousal = 0.1)
+# e_CaughtSomeoneBluffing = Event('Caught someone bluffing', valence = 0.1, arousal = 0.1)
+# e_LostRound = Event('Lost the round', valence = 1, arousal = 1)
+# e_Close2Win = Event('Is close to win', valence = 1, arousal = 1)
+# e_SomeoneClose2Win = Event('Someone is close to win', valence = 1, arousal = 1)
+# e_RightDoubt = Event('Doubted someone and was right', valence = 1, arousal = 1)
+# e_WrongDoubt = Event('Doubted someone and was wrong', valence = 1, arousal = 1)
+# e_BluffUnnoticed = Event('Bluffed and no one noticed', valence = 1 , arousal = 1)
 
 players = simulategames(100, False)
 # deck = Deck(2)
