@@ -9,6 +9,16 @@ from random import shuffle, choice, uniform
 from copy import deepcopy
 import matplotlib.pyplot as plt
 
+#colors for make styled prints
+class Color:
+    red = '\033[31m'
+    green = '\033[32m'
+    yellow = '\033[33m'
+    blue = '\033[34m'
+    purple = '\033[35m'
+    cyan = '\033[36m'
+    grey = '\033[37m'
+    clear = '\033[m'
 
 class Random:
     def get(value):
@@ -31,6 +41,10 @@ class Personality:
         self.haste = haste
         self.memory = memory
         self.selfcontrol = selfcontrol
+
+    def showtraits(self):
+        return ('memory: %f, haste: %f, self-control: %f' %(self.memory, self.haste, self.selfcontrol))
+
 
 
 class Emotion:
@@ -126,6 +140,7 @@ class Player:
                 else:
                     return True
         else: #some other player's turn
+            print('%s traits -> %s' % (self.name, self.personality.showtraits()))
             if lenHand == 0: #if the player don't have cards left, doubt it
                 return True
             else:
@@ -213,22 +228,22 @@ class Game:
         self.lastPlayer = None
 
 
-    def playgame(self, maxrounds=1000, printstats=True):
+    def playgame(self, maxrounds=2, printstats=True):
         gameover = False
         while self.rounds < maxrounds and not gameover:
             if printstats:
                 print(' ')
-                print('Round number %i:' %(self.rounds+1))
+                print('%sRound number %i:%s' %(Color.purple, self.rounds+1, Color.clear))
     
                 gameover = self.playround(printstats)
     
-                print('-------------------------------')
+                print('-=-'*20)
                 self.printhands()
-                print('End of round number %i' %(self.rounds))
+                print('%sEnd of round number %i%s' %(Color.purple, self.rounds, Color.clear))
                 if gameover:
                     self.lastPlayer.won += 1
                     print('%s won.' %self.lastPlayer.name)
-                print('-------------------------------')
+                print('-=-'*20)
             else:
                 gameover = self.playround(printstats)
                 if gameover:
@@ -429,13 +444,15 @@ def simulategames(games=100, printstats=False):
     fig, ax = plt.subplots(figsize=(8,8), dpi=150)
 
     #plt.scatter(np.arange(1,7), [player.won for player in players])
-    plt.scatter([player.name for player in players], [player.won for player in players])
-    plt.show()
+    # plt.scatter([player.name for player in players], [player.won for player in players])
+    # plt.show()
     showresults(players)
     return players
     #showresults(players)
     
-players = simulategames(100, False)
+players = simulategames(1, True)
+
+print()
 # deck = Deck(2)
 # deck.printdeck()
 # players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
