@@ -372,7 +372,7 @@ class Game:
                 orderPlayerList = self.players
 
             #Performs each player's move
-            for player in orderPlayerList:
+            for orderedIndex,player in enumerate(orderPlayerList):
                 #Decide wether to gamble or to doubt
                 cards, currentcard = player.doubtorgamble(currentcard, printstats)
 
@@ -416,10 +416,17 @@ class Game:
                         player.bluffs += 1
                     #Get the list of players that is not the current player
                     doubting_player = [d_player for d_player in self.players if d_player != player]
+                    #Get who is the next player
+                    if orderedIndex+1 == len(orderPlayerList):
+                        nextPlayer = orderPlayerList[0]
+                    else:
+                        nextPlayer = orderPlayerList[orderedIndex+1]
                     #Shuffle the list (so that not the same player doubts every time)
                     shuffle(doubting_player)
                     #Check if player from the list wants to doubt
                     for d_player in doubting_player:
+                        #Get list of players that are NOT the current player and NOT the player evaluating the doubt
+                        otherPlayers = [other for other in doubting_player if other != d_player]
                         doubt = False
                         doubt = d_player.evaluatedoubt(currentcard,  turn=1, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
                         if doubt:
