@@ -411,15 +411,16 @@ class Game:
         stack = []
         currentcard = None
 
+        #Creates the list of player starting from the next player (the first round starts with Player 1, than 2, 3,...)
+        if self.lastPlayer:
+            currentPlayerIndex = self.players.index(self.lastPlayer) + 1
+            orderPlayerList = [self.players[currentPlayerIndex+i] if i+currentPlayerIndex < len(self.players) else self.players[(currentPlayerIndex+i)%len(self.players)] for i in range(len(self.players))]
+        else: #First round
+            orderPlayerList = self.players
+
         #Keeps playing until someone doubts or win
         while not over:
-            #Creates the list of player starting from the next player (the first round starts with Player 1, than 2, 3,...)
-            if self.lastPlayer:
-                currentPlayerIndex = self.players.index(self.lastPlayer) + 1
-                orderPlayerList = [self.players[currentPlayerIndex+i] if i+currentPlayerIndex < len(self.players) else self.players[(currentPlayerIndex+i)%len(self.players)] for i in range(len(self.players))]
-            else: #First round
-                orderPlayerList = self.players
-
+            
             #Performs each player's move
             for orderedIndex,player in enumerate(orderPlayerList):
                 #Decide wether to gamble or to doubt
