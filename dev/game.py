@@ -215,6 +215,7 @@ class Player:
             currentcard = self.pickcard()
 
         if not currentcard in self.hand: #bluff
+            print('%s%s is bluffing%s' % (Color.purple, self.name, Color.clear))
             amount = self.chooseamountbluff(printstats)
             cardstostack = []
             for i in range(amount):
@@ -235,11 +236,11 @@ class Player:
 
     def evaluatedoubt(self, currentcard, turn, manyCards, nextPlayer, possibleCards, currentPlayer, otherPlayers, lenHand=None):
         #Check if it will doubt
-        print('%sEvaluate doubt%s' % (Color.blue, Color.clear))
+        print('%sEvaluate doubt for PLAYER=%s%s' % (Color.blue, self.name, Color.clear))
         print('%s has arousal %f' % (self.name, self.emotion.arousal))
         memorymodificator = round(10 * self.personality.memory)
         print('%s has memory %f and modificator %i' % (self.name, self.personality.memory, memorymodificator))
-        print(list(reversed(currentPlayer.hand)))
+
         currentPlayerCards = list(reversed(currentPlayer.handvisible))[:memorymodificator]
         viewedOthers = []
         for other in otherPlayers:
@@ -283,11 +284,11 @@ class Player:
             doubt = Random.get(doubtPercent)
             print('result from random %i' % doubt)
             if doubt==0:
-                print('will believe')
+                print('%swill believe%s' % (Color.green, Color.clear))
                 print('%sEnd Evaluate doubt%s' % (Color.blue, Color.clear))
                 return False
             else:
-                print('will doubt')
+                print('%swill doubt%s' % (Color.red, Color.clear))
                 print('%sEnd Evaluate doubt%s' % (Color.blue, Color.clear))
                 return True
 
@@ -413,9 +414,9 @@ class Game:
         else:
             print('%s doubted %s' %(player1.name, player2.name))
             if doubtwinner==player1:
-                print('%s bluffed, %s was right' %(player2.name, player1.name))
+                print('%s%s bluffed, %s was right%s' %(Color.red, player2.name, player1.name, Color.clear))
             else:
-                print('%s was telling the truth, %s was wrong' %(player2.name, player1.name))
+                print('%s%s was telling the truth, %s was wrong%s' %(Color.green, player2.name, player1.name, Color.clear))
 
     def getdoubtprob(self, player):
         return 0.3 * player.personality.haste + 0.7 * ((1 + player.emotion.arousal) / 2)
@@ -680,7 +681,7 @@ Event('BluffOK','Bluffed and no one noticed', valence = 0.05, arousal = 0)
 Event('TimePass','Time passes', valence = 0, arousal = -0.05)
 
 
-players = simulategames(3, False)
+players = simulategames(1, True)
 # deck = Deck(2)
 # deck.printdeck()
 # players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
