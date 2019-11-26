@@ -73,12 +73,13 @@ class Event:
 
 class Player:
 
-    def __init__(self, name, personality=Personality(1,1,1), emotion=Emotion(0, uniform(0.2, 0.8)), amountstrategy='random', willtodoubt=0.1, willtobluff=0.5):
+    def __init__(self, name, personality=None, emotion=None, amountstrategy='random', willtodoubt=0.1, willtobluff=0.5):
         self.name = name
         self.hand = [] #list of cards
 
-        self.emotion = emotion
-        self.personality = personality
+        self.emotion = Emotion(0, uniform(0.2, 0.8))
+        self.personality = Personality(1,1,1)
+        #print(id(self.emotion))
 
         #Emotions/sort of
         self.handvisible = [] #list of cards that may be visible to other players
@@ -98,6 +99,7 @@ class Player:
         self.bluffslost = 0
         self.log_arousal = []
         self.log_valence = []
+        self.log_cardsamount = []
 
     def reset(self):
         self.won = 0
@@ -127,8 +129,9 @@ class Player:
         None.
 
         """
-        self.log_valence.append(event.valence)
-        self.log_arousal.append(event.arousal)
+        if event.name == 'TimePass':
+            self.log_valence.append(self.emotion.valence)
+            self.log_arousal.append(self.emotion.arousal)
         self.emotion.update(self.personality.selfcontrol, event)
 
     def pickcard(self):
@@ -472,14 +475,24 @@ class Game:
                         break #Someone already doubted, leave FOR
 
                 self.lastPlayer = player
+                #Check if player has no cards
                 if len(self.lastPlayer.hand)==0:
                     self.rounds += 1
+                    player.log_cardsamount.append(len(player.hand))
                     return True #Gameover
+                #Check if player is close to win (20% of the initial amount of cards received)
+                else:
+                    if len(self.lastPlayer.hand) <= 0.2*len(self.deck.cards)/len(self.players):
+                        self.lastPlayer.react2event(Event.getEvent('IClose2Win'))
+                        for others in [other for other in self.players if other != self.lastPlayer]:
+                            others.react2event(Event.getEvent('SomeoneClose2Win'))
+                        
                 if over: #If someone doubted, the round is over
                     break #Someone already doubted, leave FOR
         
             for player in orderPlayerList:
                 player.react2event(Event.getEvent('TimePass'))
+                player.log_cardsamount.append(len(player.hand))
             self.rounds += 1
         return gameover
 
@@ -575,6 +588,30 @@ def simulategames(games=100, printstats=False):
     showresults(players)
     return players
     #showresults(players)
+
+def plotPlayersEmotion(listofplayers):
+    columns = 2
+    rows = int(np.ceil(len(listofplayers)/columns))
+    fig, axs = plt.subplots(rows, columns, figsize=(5,8), dpi=150)
+    yupperlimit = max([max(player.log_cardsamount) for player in listofplayers])
+    for ax, player, i in zip(axs.flat, players, range(len(players))):
+        ax.plot(np.arange(len(player.log_cardsamount)), player.log_cardsamount, alpha=0.5, color='blue')
+        ax.plot([0,len(player.log_cardsamount)],[0,0], alpha=0.5, color='red')
+        
+        
+        valence = (np.asarray(player.log_valence)+1)/2*yupperlimit
+        arousal = (np.asarray(player.log_arousal)+1)/2*yupperlimit
+        
+        ax.scatter(np.arange(len(valence)),valence, color='green', alpha=0.5)
+        ax.scatter(np.arange(len(arousal)),arousal, color='yellow', alpha=0.5)
+        
+        ax.set_title(player.name)
+        ax.set_ylim([-1,yupperlimit])
+        
+        if i==len(players):
+            break
+    plt.tight_layout()
+    plt.show()
 
 #Events definition (adding names to create the log)
 Event('RoundWon','Won the round', valence = 0.2, arousal = 0.1)
