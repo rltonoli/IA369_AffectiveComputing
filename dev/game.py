@@ -350,7 +350,7 @@ class Game:
 
 
 
-    def playgame(self, maxrounds=10, printstats=True):
+    def playgame(self, maxrounds=1000, printstats=True):
         gameover = False
         while self.rounds < maxrounds and not gameover:
             if printstats:
@@ -424,94 +424,62 @@ class Game:
             for orderedIndex,player in enumerate(orderPlayerList):
                 #Decide wether to gamble or to doubt
                 cards, currentcard = player.gamble(currentcard, printstats)
-
-                #If player doubted, check if the last player bluffed
-                if len(cards) == 0: #doubted
-                    player.doubts += 1
-
-                    if lastHand == [currentcard]*len(lastHand): #Last player was telling the truth
-                        player.add2hand(stack)
-                        player.add2handvisible(lastHand, self.rounds, addall = False)
-                        self.lastPlayer.removefromhandvisible(lastHand)
-                        if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, self.lastPlayer)
-                        self.lastPlayer.roundswin += 1
-                        self.lastPlayer.react2event(Event.getEvent('RoundWon'))
-                        player.react2event(Event.getEvent('RoundLost'))
-                        
-                        
-                    else: #Last player was bluffing
-                        player.rightdoubts += 1
-                        self.lastPlayer.bluffslost += 1
-                        self.lastPlayer.add2hand(stack)
-                        self.lastPlayer.add2handvisible(lastHand, self.rounds, addall = False)
-                        player.removefromhandvisible(lastHand)
-                        self.lastPlayer.react2event(Event.getEvent('RoundLost'))
-                        player.react2event(Event.getEvent('RoundWon'))
-                        if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, player)
-                        player.roundswin += 1
-                    over = True
-                    self.lastPlayer = player
-                    break
-
-                #If the player decided to gamble, add cards to stack and check if the other players want to doubt the move
-                else: #played
-                    #Just raises the confidence of the last player if he bluffed and no one noticed
-                    if lastHand != [currentcard]*len(lastHand):
-                        self.lastPlayer.react2event(Event.getEvent('BluffOK'))
-                    if printstats: self.printmovestats(player, cards, currentcard, None)
-                    lastHand = deepcopy(cards)
-                    stack += lastHand
-                    if lastHand != [currentcard]*len(lastHand):
-                        player.bluffs += 1
-                    #Get the list of players that is not the current player
-                    doubting_player = [d_player for d_player in self.players if d_player != player]
-                    #Get who is the next player
-                    if orderedIndex+1 == len(orderPlayerList):
-                        nextPlayer = orderPlayerList[0]
-                    else:
-                        nextPlayer = orderPlayerList[orderedIndex+1]
-                    #Shuffle the list (so that not the same player doubts every time)
-                    shuffle(doubting_player)
-                    #Check if player from the list wants to doubt
-                    for d_player in doubting_player:
-                        #Get list of players that are NOT the current player and NOT the player evaluating the doubt
-                        otherPlayers = [other for other in doubting_player if other != d_player]
-                        doubt = False
-                        doubt = d_player.evaluatedoubt(currentcard,  turn=1, manyCards=len(cards), possibleCards=(self.deck.numberofdecks*4) , currentPlayer=player,  otherPlayers=otherPlayers, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
-                        if doubt:
-                            d_player.doubts += 1
-                            over = True
-                            if lastHand == [currentcard]*len(lastHand):
-                                if printstats: self.printmovestats(d_player, [], currentcard, player, player)
-                                d_player.add2hand(stack)
-                                d_player.add2handvisible(lastHand, self.rounds, addall = False)
-                                player.removefromhandvisible(lastHand)
-                                player.roundswin += 1
-                                player.react2event(Event.getEvent('RoundWon'))
-                                d_player.react2event(Event.getEvent('RoundLost'))
-                            else:
-                                if printstats: self.printmovestats(d_player, [], currentcard, player, d_player)
-                                player.add2hand(stack)
-                                player.add2handvisible(lastHand, self.rounds, addall = False)
-                                player.bluffslost += 1
-                                d_player.rightdoubts += 1
-                                d_player.roundswin += 1
-                                d_player.react2event(Event.getEvent('RoundWon'))
-                                player.react2event(Event.getEvent('RoundLost'))
-                            break #Someone already doubted, leave FOR
+                
+                #Just raises the confidence of the last player if he bluffed and no one noticed
+                if lastHand != [currentcard]*len(lastHand):
+                    self.lastPlayer.react2event(Event.getEvent('BluffOK'))
+                if printstats: self.printmovestats(player, cards, currentcard, None)
+                lastHand = deepcopy(cards)
+                stack += lastHand
+                if lastHand != [currentcard]*len(lastHand):
+                    player.bluffs += 1
+                #Get the list of players that is not the current player
+                doubting_player = [d_player for d_player in self.players if d_player != player]
+                #Get who is the next player
+                if orderedIndex+1 == len(orderPlayerList):
+                    nextPlayer = orderPlayerList[0]
+                else:
+                    nextPlayer = orderPlayerList[orderedIndex+1]
+                #Shuffle the list (so that not the same player doubts every time)
+                shuffle(doubting_player)
+                #Check if player from the list wants to doubt
+                for d_player in doubting_player:
+                    #Get list of players that are NOT the current player and NOT the player evaluating the doubt
+                    otherPlayers = [other for other in doubting_player if other != d_player]
+                    doubt = False
+                    doubt = d_player.evaluatedoubt(currentcard,  turn=1, manyCards=len(cards), possibleCards=(self.deck.numberofdecks*4) , currentPlayer=player,  otherPlayers=otherPlayers, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
+                    if doubt:
+                        d_player.doubts += 1
+                        over = True
+                        if lastHand == [currentcard]*len(lastHand):
+                            if printstats: self.printmovestats(d_player, [], currentcard, player, player)
+                            d_player.add2hand(stack)
+                            d_player.add2handvisible(lastHand, self.rounds, addall = False)
+                            player.removefromhandvisible(lastHand)
+                            player.roundswin += 1
+                            player.react2event(Event.getEvent('RoundWon'))
+                            d_player.react2event(Event.getEvent('RoundLost'))
+                        else:
+                            if printstats: self.printmovestats(d_player, [], currentcard, player, d_player)
+                            player.add2hand(stack)
+                            player.add2handvisible(lastHand, self.rounds, addall = False)
+                            player.bluffslost += 1
+                            d_player.rightdoubts += 1
+                            d_player.roundswin += 1
+                            d_player.react2event(Event.getEvent('RoundWon'))
+                            player.react2event(Event.getEvent('RoundLost'))
+                        break #Someone already doubted, leave FOR
 
                 self.lastPlayer = player
                 if len(self.lastPlayer.hand)==0:
                     self.rounds += 1
                     return True #Gameover
                 if over: #If someone doubted, the round is over
-                    for player in orderPlayerList:
-                        player.react2event(Event.getEvent('TimePass'))
-                    break
+                    break #Someone already doubted, leave FOR
         
-        for player in orderPlayerList:
-            player.react2event(Event.getEvent('TimePass'))
-        self.rounds += 1
+            for player in orderPlayerList:
+                player.react2event(Event.getEvent('TimePass'))
+            self.rounds += 1
         return gameover
 
 class Deck:
@@ -629,7 +597,7 @@ Event('TimePass','Time passes', valence = 0, arousal = -0.05)
 # e_BluffUnnoticed = Event('Bluffed and no one noticed', valence = 1 , arousal = 1)
 
 
-players = simulategames(1, True)
+players = simulategames(1, False)
 # deck = Deck(2)
 # deck.printdeck()
 # players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
