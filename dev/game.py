@@ -9,6 +9,15 @@ from random import shuffle, choice, uniform
 from copy import deepcopy
 import matplotlib.pyplot as plt
 
+class Color:
+    red = '\033[31m'
+    green = '\033[32m'
+    yellow = '\033[33m'
+    blue = '\033[34m'
+    purple = '\033[35m'
+    cyan = '\033[36m'
+    grey = '\033[37m'
+    clear = '\033[m'
 
 class Random:
     def get(value):
@@ -64,7 +73,7 @@ class Event:
 
 class Player:
 
-    def __init__(self, name, personality=Personality(1,1,1), emotion=Emotion(0,0), amountstrategy='random', willtodoubt=0.1, willtobluff=0.5):
+    def __init__(self, name, personality=Personality(1,1,1), emotion=Emotion(0, uniform(0.2, 0.8)), amountstrategy='random', willtodoubt=0.1, willtobluff=0.5):
         self.name = name
         self.hand = [] #list of cards
 
@@ -204,33 +213,68 @@ class Player:
                 cardstostack = [currentcard]*amount
         return cardstostack,currentcard
 
-    def evaluatedoubt(self, currentcard, turn, lenHand=None):
+    def evaluatedoubt(self, currentcard, turn, manyCards, possibleCards, currentPlayer, otherPlayers, lenHand=None):
         #Check if it will doubt
-        if turn == 0: #its turn
+        memorymodificator = round(10*self.personality.memory)
 
-            if currentcard:
-                #if not currentcard in self.hand:
-                doubt = Random.get(1-self.willtobluff)
-                if doubt==0:
-                    return False
-                else:
-                    return True
+        print(Color.blue,'Check if it will doubt')
+        # print(self.name, 'has memory', round(10 * self.personality.memory))
+        print(self.name, 'has arousal', self.emotion.arousal)
+        currentPlayerCards = list(reversed(currentPlayer.handvisible))[:memorymodificator]
+        # print(self.name, 'can see',currentPlayer.name,'hand', currentPlayerCards)
+        # print('Current Card', manyCards,'of', currentcard, 'from total of', possibleCards)
+        viewedOthers = []
+        for other in otherPlayers:
+            # print(self.name, 'looking at', other.name)
+            viewedOthers += list(reversed(other.handvisible))[:memorymodificator]
+
+        allViewedCards = viewedOthers+self.hand
+        # print('All others cards', allViewedCards.count(currentcard))
+
+        viewdPlayersCards = allViewedCards.count(currentcard)
+        viewdCurrentCards = currentPlayerCards.count(currentcard)
+        totalOfCards = (possibleCards+1)-manyCards
+        doubtPercent = ((self.emotion.arousal+1)/2)*((manyCards-viewdCurrentCards)/(possibleCards-viewdPlayersCards))
+        print('doubt chance', doubtPercent)
+        print(self.name, 'Vg', viewdPlayersCards, 'Vo', viewdCurrentCards, 'Tt', possibleCards, 'Jc', manyCards,Color.clear)
+        # todo see if player is next
+
+        if viewdPlayersCards >= totalOfCards:
+            print(Color.red, currentPlayer.name, 'lies',Color.clear)
+            return True
+        elif viewdCurrentCards >= manyCards:
+            print(Color.green, currentPlayer.name, 'dont lie',Color.clear)
+            return False
+        # elif turn == 0: #its turn
+        #     if currentcard:
+        #         #if not currentcard in self.hand:
+        #         doubt = Random.get(doubtPercent)
+        #         if doubt==0:
+        #             return False
+        #         else:
+        #             return True
         else: #some other player's turn
             if lenHand == 0: #if the player don't have cards left, doubt it
+                print('if the player dont have cards left, doubt it')
                 return True
             else:
-                doubt = Random.get(self.willtodoubt)
+                print('chance to doubt', doubtPercent)
+                doubt = Random.get(doubtPercent)
+                print('result from random', doubt)
                 if doubt==0:
+                    print('will believe')
                     return False
                 else:
+                    print('will doubt')
                     return True
 
-    def doubtorgamble(self, currentcard, printstats):
-        #Decide wether to doubt or play
-        if self.evaluatedoubt(currentcard,turn=0):
-            return [],currentcard #doubt
-        else:
-            return self.gamble(currentcard, printstats) #gamble
+
+    # def doubtorgamble(self, currentcard, printstats):
+    #     #Decide wether to doubt or play
+    #     if self.evaluatedoubt(currentcard,turn=0):
+    #         return [],currentcard #doubt
+    #     else:
+    #         return self.gamble(currentcard, printstats) #gamble
 
     def add2hand(self, cards):
         self.hand += cards
@@ -306,7 +350,7 @@ class Game:
 
 
 
-    def playgame(self, maxrounds=1000, printstats=True):
+    def playgame(self, maxrounds=10, printstats=True):
         gameover = False
         while self.rounds < maxrounds and not gameover:
             if printstats:
@@ -379,7 +423,7 @@ class Game:
             #Performs each player's move
             for orderedIndex,player in enumerate(orderPlayerList):
                 #Decide wether to gamble or to doubt
-                cards, currentcard = player.doubtorgamble(currentcard, printstats)
+                cards, currentcard = player.gamble(currentcard, printstats)
 
                 #If player doubted, check if the last player bluffed
                 if len(cards) == 0: #doubted
@@ -433,7 +477,7 @@ class Game:
                         #Get list of players that are NOT the current player and NOT the player evaluating the doubt
                         otherPlayers = [other for other in doubting_player if other != d_player]
                         doubt = False
-                        doubt = d_player.evaluatedoubt(currentcard,  turn=1, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
+                        doubt = d_player.evaluatedoubt(currentcard,  turn=1, manyCards=len(cards), possibleCards=(self.deck.numberofdecks*4) , currentPlayer=player,  otherPlayers=otherPlayers, lenHand=len(player.hand)) #If the player has no cards left, someone must doubt
                         if doubt:
                             d_player.doubts += 1
                             over = True
@@ -544,7 +588,7 @@ def prepareplayers(players):
 def simulategames(games=100, printstats=False):
     deck = Deck(2)
     #deck.printdeck()
-    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0, 1), uniform(0, 1)), amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0.3,0.3,0.3,0.3,0.3,0.3], [0.9,0.7,0.9,0.7,0.9,0.7])]
+    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0.2, 0.8), uniform(0, 1)), amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0,0,0,0,0,0], [0.9,0.7,0.9,0.7,0.9,0.7])]
 
 
 
@@ -557,8 +601,8 @@ def simulategames(games=100, printstats=False):
     fig, ax = plt.subplots(figsize=(8,8), dpi=150)
 
     #plt.scatter(np.arange(1,7), [player.won for player in players])
-    plt.scatter([player.name for player in players], [player.won for player in players])
-    plt.show()
+    # plt.scatter([player.name for player in players], [player.won for player in players])
+    # plt.show()
     showresults(players)
     return players
     #showresults(players)
@@ -585,7 +629,7 @@ Event('TimePass','Time passes', valence = 0, arousal = -0.05)
 # e_BluffUnnoticed = Event('Bluffed and no one noticed', valence = 1 , arousal = 1)
 
 
-players = simulategames(100, False)
+players = simulategames(1, True)
 # deck = Deck(2)
 # deck.printdeck()
 # players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
