@@ -397,6 +397,12 @@ class Game:
             else:
                 print('%s was telling the truth, %s was wrong' %(player2.name, player1.name))
 
+    def getdoubtprob(self, player):
+        return 0.3 * player.personality.haste + 0.7 * ((1 + player.emotion.arousal) / 2)
+
+    def sortbyhaste2doubt(self, list):
+        list.sort(key=self.getdoubtprob, reverse=True)
+        return list
 
     def playround(self, printstats=True):
         over = False #flag for round over (someone doubted)
@@ -444,8 +450,10 @@ class Game:
                     nextPlayer = orderPlayerList[0]
                 else:
                     nextPlayer = orderPlayerList[orderedIndex+1]
-                #Shuffle the list (so that not the same player doubts every time)
-                shuffle(doubting_player)
+
+                # sort the list by the player probability to doubt
+                self.sortbyhaste2doubt(doubting_player)
+
                 #Check if player from the list wants to doubt
                 for d_player in doubting_player:
                     #Get list of players that are NOT the current player and NOT the player evaluating the doubt
