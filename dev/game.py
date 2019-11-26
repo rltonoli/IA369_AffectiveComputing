@@ -87,6 +87,8 @@ class Player:
         self.rightdoubts = 0
         self.bluffs = 0
         self.bluffslost = 0
+        self.log_arousal = []
+        self.log_valence = []
 
     def reset(self):
         self.won = 0
@@ -116,7 +118,8 @@ class Player:
         None.
 
         """
-
+        self.log_valence.append(event.valence)
+        self.log_arousal.append(event.arousal)
         self.emotion.update(self.personality.selfcontrol, event)
 
     def pickcard(self):
@@ -296,6 +299,7 @@ class Game:
         self.rounds = 0
         self.players = players
         self.deck = deck
+        self.roundspergame = []
 
         self.lastPlayer = None
 
@@ -322,7 +326,8 @@ class Game:
                 gameover = self.playround(printstats)
                 if gameover:
                     self.lastPlayer.won += 1
-
+        self.roundspergame.append(self.rounds)
+        print('Total rounds %i:' % self.rounds)
             # soma = 0
             # for player in self.players:
             #     soma += len(player.hand)
@@ -449,13 +454,15 @@ class Game:
                                 d_player.roundswin += 1
                                 d_player.react2event(Event.getEvent('RoundWon'))
                                 player.react2event(Event.getEvent('RoundLost'))
-                            break
+                            break #Someone already doubted, leave FOR
 
                 self.lastPlayer = player
                 if len(self.lastPlayer.hand)==0:
                     self.rounds += 1
                     return True #Gameover
                 if over: #If someone doubted, the round is over
+                    for player in orderPlayerList:
+                        player.react2event(Event.getEvent('TimePass'))
                     break
         
         for player in orderPlayerList:
