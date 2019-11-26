@@ -116,6 +116,7 @@ class Player:
         None.
 
         """
+
         self.emotion.update(self.personality.selfcontrol, event)
 
     def pickcard(self):
@@ -385,13 +386,18 @@ class Game:
                         self.lastPlayer.removefromhandvisible(lastHand)
                         if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, self.lastPlayer)
                         self.lastPlayer.roundswin += 1
+                        self.lastPlayer.react2event(Event.getEvent('RoundWon'))
+                        player.react2event(Event.getEvent('RoundLost'))
+                        
+                        
                     else: #Last player was bluffing
                         player.rightdoubts += 1
                         self.lastPlayer.bluffslost += 1
                         self.lastPlayer.add2hand(stack)
                         self.lastPlayer.add2handvisible(lastHand, self.rounds, addall = False)
                         player.removefromhandvisible(lastHand)
-                        #self.lastPlayer.react2event()
+                        self.lastPlayer.react2event(Event.getEvent('RoundLost'))
+                        player.react2event(Event.getEvent('RoundWon'))
                         if printstats: self.printmovestats(player, [], currentcard, self.lastPlayer, player)
                         player.roundswin += 1
                     over = True
@@ -400,6 +406,9 @@ class Game:
 
                 #If the player decided to gamble, add cards to stack and check if the other players want to doubt the move
                 else: #played
+                    #Just raises the confidence of the last player if he bluffed and no one noticed
+                    if lastHand != [currentcard]*len(lastHand):
+                        self.lastPlayer.react2event(Event.getEvent('BluffOK'))
                     if printstats: self.printmovestats(player, cards, currentcard, None)
                     lastHand = deepcopy(cards)
                     stack += lastHand
@@ -422,6 +431,8 @@ class Game:
                                 d_player.add2handvisible(lastHand, self.rounds, addall = False)
                                 player.removefromhandvisible(lastHand)
                                 player.roundswin += 1
+                                player.react2event(Event.getEvent('RoundWon'))
+                                d_player.react2event(Event.getEvent('RoundLost'))
                             else:
                                 if printstats: self.printmovestats(d_player, [], currentcard, player, d_player)
                                 player.add2hand(stack)
@@ -429,6 +440,8 @@ class Game:
                                 player.bluffslost += 1
                                 d_player.rightdoubts += 1
                                 d_player.roundswin += 1
+                                d_player.react2event(Event.getEvent('RoundWon'))
+                                player.react2event(Event.getEvent('RoundLost'))
                             break
 
                 self.lastPlayer = player
@@ -437,6 +450,9 @@ class Game:
                     return True #Gameover
                 if over: #If someone doubted, the round is over
                     break
+        
+        for player in orderPlayerList:
+            player.react2event(Event.getEvent('TimePass'))
         self.rounds += 1
         return gameover
 
@@ -540,9 +556,10 @@ Event('CaughtSomeonesBluff','Caught someone bluffing', valence = 0.1, arousal = 
 Event('RoundLost','Lost the round', valence = -0.1, arousal = -0.1)
 Event('IClose2Win','Is close to win', valence = 0.1, arousal = 0.2)
 Event('SomeoneClose2Win','Someone is close to win', valence = -0.1, arousal = 0.2)
-Event('WonDoubt','Doubted someone and was right', valence = 0.1, arousal = 0.1)
-Event('LostDoubt','Doubted someone and was wrong', valence = -0.1, arousal = -0.1)
-Event('BluffOK','Bluffed and no one noticed', valence = 0.1, arousal = 0)
+Event('WonDoubt','Doubted someone and was right', valence = 0.1, arousal = 0.1) # ISSO EH A MESMA COISA QUE CaughtSomeonesBluff NEH?
+Event('LostDoubt','Doubted someone and was wrong', valence = -0.1, arousal = -0.1) 
+Event('BluffOK','Bluffed and no one noticed', valence = 0.05, arousal = 0)
+Event('TimePass','Time passes', valence = 0, arousal = -0.05)
 # e_WonRound = Event('Won the round', valence = 0.2, arousal = 0.1)
 # e_WasCaughtBluffing = Event('Was caught bluffing', valence = -0.2, arousal = 0.1)
 # e_CaughtSomeoneBluffing = Event('Caught someone bluffing', valence = 0.1, arousal = 0.1)
@@ -552,6 +569,7 @@ Event('BluffOK','Bluffed and no one noticed', valence = 0.1, arousal = 0)
 # e_RightDoubt = Event('Doubted someone and was right', valence = 1, arousal = 1)
 # e_WrongDoubt = Event('Doubted someone and was wrong', valence = 1, arousal = 1)
 # e_BluffUnnoticed = Event('Bluffed and no one noticed', valence = 1 , arousal = 1)
+
 
 players = simulategames(100, False)
 # deck = Deck(2)
