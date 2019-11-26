@@ -77,9 +77,14 @@ class Player:
         self.name = name
         self.hand = [] #list of cards
 
-        self.emotion = Emotion(0, uniform(0.2, 0.8))
-        self.personality = Personality(1,1,1)
-        #print(id(self.emotion))
+        if not emotion:
+            self.emotion = Emotion(0, uniform(0.2, 0.8))
+        else:
+            self.emotion = emotion
+        if not personality:
+            self.personality = Personality(1,1,1)
+        else:
+            self.personality = personality
 
         #Emotions/sort of
         self.handvisible = [] #list of cards that may be visible to other players
@@ -114,6 +119,18 @@ class Player:
     def start(self):
         self.hand = []
         self.handvisible = []
+        
+        #Reset stats
+        self.won = 0
+        self.gamewin = 0
+        self.roundswin = 0
+        self.doubts = 0
+        self.rightdoubts = 0
+        self.bluffs = 0
+        self.bluffslost = 0
+        self.log_arousal = []
+        self.log_valence = []
+        self.log_cardsamount = []
 
     def react2event(self, event):
         """
@@ -578,17 +595,16 @@ def prepareplayers(players):
 def simulategames(games=100, printstats=False):
     deck = Deck(2)
     #deck.printdeck()
-    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0.2, 0.8), uniform(0, 1)), amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0,0,0,0,0,0], [0.9,0.7,0.9,0.7,0.9,0.7])]
-
-
+    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0.2, 0.8), uniform(0, 1)), emotion = Emotion(0, uniform(0.2, 0.8)) ,amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0,0,0,0,0,0], [0.9,0.7,0.9,0.7,0.9,0.7])]
 
     game = Game(players, deck)
     for i in range(games):
         prepareplayers(players)
         game = Game(players, deck)
         game.playgame(printstats=printstats)
+        plotPlayersEmotion(players)
 
-    fig, ax = plt.subplots(figsize=(8,8), dpi=150)
+    # fig, ax = plt.subplots(figsize=(8,8), dpi=150)
 
     #plt.scatter(np.arange(1,7), [player.won for player in players])
     # plt.scatter([player.name for player in players], [player.won for player in players])
@@ -602,10 +618,10 @@ def plotPlayersEmotion(listofplayers):
     rows = int(np.ceil(len(listofplayers)/columns))
     fig, axs = plt.subplots(rows, columns, figsize=(5,8), dpi=150)
     yupperlimit = max([max(player.log_cardsamount) for player in listofplayers])
-    for ax, player, i in zip(axs.flat, players, range(len(players))):
+    for ax, player, i in zip(axs.flat, listofplayers, range(len(listofplayers))):
         ax.plot(np.arange(len(player.log_cardsamount)), player.log_cardsamount, alpha=0.5, color='blue')
-        ax.plot([0,len(player.log_cardsamount)],[0,0], alpha=0.5, color='red')
-        
+        # ax.plot([0,len(player.log_cardsamount)],[0,0], alpha=0.5, color='red')
+        ax.plot([0,len(player.log_cardsamount)],[yupperlimit/2,yupperlimit/2], alpha=0.3, color='red')
         
         valence = (np.asarray(player.log_valence)+1)/2*yupperlimit
         arousal = (np.asarray(player.log_arousal)+1)/2*yupperlimit
@@ -614,9 +630,9 @@ def plotPlayersEmotion(listofplayers):
         ax.scatter(np.arange(len(arousal)),arousal, color='yellow', alpha=0.5)
         
         ax.set_title(player.name)
-        ax.set_ylim([-1,yupperlimit])
+        ax.set_ylim([0,yupperlimit])
         
-        if i==len(players):
+        if i==len(listofplayers):
             break
     plt.tight_layout()
     plt.show()
@@ -632,18 +648,9 @@ Event('WonDoubt','Doubted someone and was right', valence = 0.1, arousal = 0.1) 
 Event('LostDoubt','Doubted someone and was wrong', valence = -0.1, arousal = -0.1) 
 Event('BluffOK','Bluffed and no one noticed', valence = 0.05, arousal = 0)
 Event('TimePass','Time passes', valence = 0, arousal = -0.05)
-# e_WonRound = Event('Won the round', valence = 0.2, arousal = 0.1)
-# e_WasCaughtBluffing = Event('Was caught bluffing', valence = -0.2, arousal = 0.1)
-# e_CaughtSomeoneBluffing = Event('Caught someone bluffing', valence = 0.1, arousal = 0.1)
-# e_LostRound = Event('Lost the round', valence = 1, arousal = 1)
-# e_Close2Win = Event('Is close to win', valence = 1, arousal = 1)
-# e_SomeoneClose2Win = Event('Someone is close to win', valence = 1, arousal = 1)
-# e_RightDoubt = Event('Doubted someone and was right', valence = 1, arousal = 1)
-# e_WrongDoubt = Event('Doubted someone and was wrong', valence = 1, arousal = 1)
-# e_BluffUnnoticed = Event('Bluffed and no one noticed', valence = 1 , arousal = 1)
 
 
-players = simulategames(1, False)
+players = simulategames(3, False)
 # deck = Deck(2)
 # deck.printdeck()
 # players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
