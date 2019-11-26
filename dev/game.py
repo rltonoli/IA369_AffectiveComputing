@@ -169,7 +169,7 @@ class Player:
     def chooseamountbluff(self, printstats=True):
 
         total = len(self.hand)
-        max = min(total, 4)
+        max = min(min(total, 4), len(self.hand))
         count = 1
 
         # # if the amount of cards in hand is greater that 1: calculate, else play 1 card
@@ -188,7 +188,7 @@ class Player:
         return count
 
 
-    def gamble(self, currentcard, printstats = True):
+    def gamble(self, currentcard, maxcards=4, printstats = True):
         #Pick a card (if it is the first npc to play)
         #and choose the amount of cards
         if not currentcard: #pick a card
@@ -197,12 +197,39 @@ class Player:
         if not currentcard in self.hand: #bluff
             amount = self.chooseamountbluff(printstats)
             cardstostack = []
-            for i in range(amount):
-                # todo change the way is selected the card to play (tomada de decisao quais cartas jogar no blefe)
-                bluffcard = self.hand.pop(choice(np.arange(len(self.hand)))) #pick one randomly
-                cardstostack.append(bluffcard)
-        else:
+            memorylimit = round(10 * self.personality.memory)
+            cardsvisible = list(reversed(self.handvisible))[:memorylimit] # cards in memory
 
+            # select only the cards that has frequency lower than 50% of the max count of cards
+            cardsvisible = [card for card in cardsvisible if cardsvisible.count(card) < 0.50 * maxcards]
+
+            # cards in hand that the player remember that other player has
+            handvisible = [card for card in self.hand if card in cardsvisible]
+            # sort the list by the element frequency
+            handvisible = sorted(handvisible, key=handvisible.count)
+
+            if amount > len(self.hand):
+                amount = len(self.hand)
+
+            while amount > 0:
+                for card in handvisible:
+                    if card in self.hand:
+                        self.hand.remove(card)
+                        cardstostack.append(card)
+                        amount = amount - 1
+
+                    if amount == 0:
+                        break
+
+                if amount > 0:
+                    bluffcard = self.hand.pop(choice(np.arange(len(self.hand))))  # pick one randomly
+                    cardstostack.append(bluffcard)
+                    amount = amount - 1
+
+            if printstats:
+                print("Lying => cards: %s Memory: %s, Hand visible: %s" % (cardstostack, cardsvisible, handvisible))
+
+        else:
             #choose amount
             amount = self.chooseamount(currentcard, printstats)
             #remove from hand
@@ -217,7 +244,7 @@ class Player:
         #Check if it will doubt
         memorymodificator = round(10*self.personality.memory)
 
-        print(Color.blue,'Check if it will doubt')
+        # print(Color.blue,'Check if it will doubt')
         # print(self.name, 'has memory', round(10 * self.personality.memory))
         print(self.name, 'has arousal', self.emotion.arousal)
         currentPlayerCards = list(reversed(currentPlayer.handvisible))[:memorymodificator]
