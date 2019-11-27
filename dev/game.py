@@ -317,9 +317,10 @@ class Player:
 
     def evaluatedoubt(self, currentcard, turn, manyCards, nextPlayer, possibleCards, currentPlayer, otherPlayers, lenHand=None, printstats = True):
         #Check if it will doubt
+        hisArousalChance = (self.emotion.arousal + 1) / 2
         if printstats:
             print('%sEvaluate doubt%s' % (Color.blue, Color.clear))
-            print('%s has arousal %f' % (self.name, self.emotion.arousal))
+            print('%s has arousal %f (arousal chance=%s)' % (self.name, self.emotion.arousal,hisArousalChance))
         memorymodificator = round(10 * self.personality.memory)
         if printstats:
             print('%s has memory %f and modificator %i' % (self.name, self.personality.memory, memorymodificator))
@@ -334,9 +335,11 @@ class Player:
         viewdCurrentCards = currentPlayerCards.count(currentcard)
         totalOfCards = (possibleCards+1)-manyCards
         isNext = nextPlayer == self
+        hasCards = self.hand.count(currentcard) > 0
         if printstats:
-            print('All others cards %s' % (allViewedCards))
-            print('Is the next player=%s (next=%s)' % (isNext, nextPlayer.name))
+            print('Others cards %s' % (viewedOthers))
+            print('His cards %s' % (self.hand))
+            print('Is the next player=%s (next=%s) and has cards=%s' % (isNext, nextPlayer.name,hasCards))
             print('%s(current) visible cards %s' % (currentPlayer.name, currentPlayerCards))
             print('%s(current) arousal is %s' % (currentPlayer.name, currentPlayer.emotion.arousal))
             print('%s(current) valence is %s' % (currentPlayer.name, currentPlayer.emotion.valence))
@@ -371,6 +374,22 @@ class Player:
                 print('%s%s valence is %s%s' % (Color.blue, currentPlayer.name, currentPlayer.emotion.valence,  Color.clear))
                 print('%sEnd Evaluate doubt%s' % (Color.blue, Color.clear))
             return True
+        elif isNext and not hasCards: #is the next and dont have the cards
+            if printstats:
+                print('%s%s is the next player and dont have the current card%s' % (Color.blue, self.name,Color.clear))
+                print('%s%s has cards=%s, his arousal chance=%s%s' % (Color.blue, self.name, hasCards, hisArousalChance, Color.clear))
+            doubt = Random.get(hisArousalChance)
+            if doubt==0:
+                if printstats:
+                    print('%swill believe%s' % (Color.green, Color.clear))
+                    print('%sEnd Evaluate doubt%s' % (Color.blue, Color.clear))
+                return False
+            else:
+                if printstats:
+                    print('%swill doubt%s' % (Color.red, Color.clear))
+                    print('%sEnd Evaluate doubt%s' % (Color.blue, Color.clear))
+                return True
+
         else: #that is the real doubt, now he'll evalate if will doubt or believe
             doubtPercent = ((self.emotion.arousal + 1) / 2) * ((manyCards - viewdCurrentCards) / (possibleCards - viewdPlayersCards))
             if printstats:
@@ -842,7 +861,7 @@ Event('TimePass','Time passes', valence = 0, arousal = -0.05)
 
 
 #players = simulategames(1, True)
-players,winnerstats, winners = simulategames(1000,False, True)
+players,winnerstats, winners = simulategames(1,True, True)
 plotWinnerStats(winnerstats, players, winners)
 # deck = Deck(2)
 # deck.printdeck()
