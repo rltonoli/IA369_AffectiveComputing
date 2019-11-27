@@ -738,7 +738,7 @@ def prepareplayers(players, resetemotions=False):
         player.start(resetemotions)
 
 
-def simulategames(games=100, printstats=False, resetemotions=False):
+def simulategames(games=100, printstats=False, resetemotions=False, plotrounddata = False):
     deck = Deck(2)
     #deck.printdeck()
 #    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0.2, 0.8), uniform(0, 1)), emotion = Emotion(0, uniform(0.2, 0.8)) ,amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0,0,0,0,0,0], [0.9,0.7,0.9,0.7,0.9,0.7])]
@@ -754,9 +754,10 @@ def simulategames(games=100, printstats=False, resetemotions=False):
     game = Game(players, deck)
     for i in range(games):
         prepareplayers(players, resetemotions)
+        print('Game %i' %i)
         game = Game(players, deck)
         game.playgame(printstats=printstats)
-#        plotPlayersEmotion(players)
+        if plotrounddata: plotPlayersEmotion(players)
         for player in players:
             if player.won == 1:
                 winner.append(player.name)
@@ -773,22 +774,28 @@ def simulategames(games=100, printstats=False, resetemotions=False):
 def plotPlayersEmotion(listofplayers):
     columns = 2
     rows = int(np.ceil(len(listofplayers)/columns))
-    fig, axs = plt.subplots(rows, columns, figsize=(20,32), dpi=60)
+    fig, axs = plt.subplots(rows, columns, figsize=(20,32), dpi=80)
     yupperlimit = max([max(player.log_cardsamount) for player in listofplayers])
     for ax, player, i in zip(axs.flat, listofplayers, range(len(listofplayers))):
-        ax.plot(np.arange(len(player.log_cardsamount)), player.log_cardsamount, alpha=0.5, color='blue')
+        ax.plot(np.arange(len(player.log_cardsamount)), player.log_cardsamount, alpha=0.5, color='darkblue')
         # ax.plot([0,len(player.log_cardsamount)],[0,0], alpha=0.5, color='red')
-        ax.plot([0,len(player.log_cardsamount)],[yupperlimit/2,yupperlimit/2], alpha=0.3, color='red')
-        txt = "Personality\nSelfcontrol = {sc:.1f}\nMemory = {mem:.1f}\nHaste = {h:.1f}"
-        ax.text(0, yupperlimit, txt.format(sc = player.personality.selfcontrol, mem = player.personality.memory, h = player.personality.haste), size='x-small', verticalalignment='top')
-
+        ax.plot([0,len(player.log_cardsamount)],[yupperlimit/2,yupperlimit/2], alpha=0.3, color='black')
+        txt = "Personality\nHaste = {h:.1f}\nMemory = {mem:.1f}\nSelfcontrol = {sc:.1f}"
+        ax.text(0, yupperlimit, txt.format(sc = player.personality.selfcontrol, mem = player.personality.memory, h = player.personality.haste), verticalalignment='top', fontsize=12)
+        ax.set_ylabel('Amount of Cards', color='darkblue')
+        ax.tick_params(axis='y', labelcolor='darkblue')
 
         valence = (np.asarray(player.log_valence)+1)/2*yupperlimit
         arousal = (np.asarray(player.log_arousal)+1)/2*yupperlimit
-
-        ax.scatter(np.arange(len(valence)),valence, color='green', alpha=0.5, label='Valence')
-        ax.scatter(np.arange(len(arousal)),arousal, color='yellow', alpha=0.5, label='Arousal')
-        ax.legend()
+        
+        ax2 = ax.twinx()
+        ax2.set_ylim([-1,1])
+        ax2.set_ylabel('Valence/Arousal')
+        ax.set_xlabel('Rounds')
+        ax.set_xlim([0, len(player.log_cardsamount)-1])
+        ax.scatter(np.arange(len(valence)),valence, color='green', alpha=0.5, label='Valence', marker='o')
+        ax.scatter(np.arange(len(arousal)),arousal, color='orange', alpha=0.5, label='Arousal', marker='X')
+        ax.legend(loc='lower left')
         ax.set_title(player.name)
         ax.set_ylim([0,yupperlimit])
 
@@ -808,13 +815,13 @@ def plotWinnerStats(stats, players, winners):
     #     a = 0
     fig, axs = plt.subplots(rows, columns, figsize=(6,6), dpi=100)
     # axs[0,0].scatter(np.zeros(len(stats[:,0])),stats[:,0], alpha = 0.1)
-    axs[0,0].hist(stats[:,0],20)
+    axs[0,0].hist(stats[:,0],7)
     axs[0,0].set_title('Haste')
     # axs[0,1].scatter(np.zeros(len(stats[:,1])),stats[:,1], alpha = 0.1)
-    axs[0,1].hist(stats[:,1],20)
+    axs[0,1].hist(stats[:,1],7)
     axs[0,1].set_title('Memory')
     # axs[1,0].scatter(np.zeros(len(stats[:,2])),stats[:,2], alpha = 0.1)
-    axs[1,0].hist(stats[:,2],20)
+    axs[1,0].hist(stats[:,2],7)
     axs[1,0].set_title('Selfcontrol')
     # axs[1,1].scatter(np.zeros(len(stats[:,3])),stats[:,3], alpha = 0.1)
     axs[1,1].hist(stats[:,3], bins=20)
@@ -826,24 +833,37 @@ def plotWinnerStats(stats, players, winners):
     wins = [winners.count('Player1'),winners.count('Player2'),winners.count('Player3'),winners.count('Player4'),winners.count('Player5'),winners.count('Player6')]
     axs[2,1].bar(np.arange(1,7), wins)
     axs[2,1].set_title('Winner')
+    for i,ax in enumerate(axs.flat):
+        ax.set_ylabel('Number of Wins')
+        if i<3:
+            ax.set_xticks([0,0.5,1])
+            ax.set_xlabel('Value')    
+        elif i>=3 and i<5:
+            ax.set_xlim([-1.05, 1.05])
+            ax.set_xticks([-1,-0.5,0,0.5,1])
+            ax.set_xlabel('Value')
+        elif i == 5:
+            ax.set_xticks([1,2,3,4,5,6])
+            ax.set_xlabel('Players')
     plt.tight_layout()
 
 #Events definition (adding names to create the log)
-Event('RoundWon','Won the round', valence = 0.2, arousal = 0.1)
-Event('BluffCaught','Was caught bluffing', valence = -0.2, arousal = 0.1)
-Event('CaughtSomeonesBluff','Caught someone bluffing', valence = 0.1, arousal = 0.1)
-Event('RoundLost','Lost the round', valence = -0.1, arousal = -0.1)
+Event('RoundWon','Won the round', valence = 0.2, arousal = 0.2)
+#Event('BluffCaught','Was caught bluffing', valence = -0.2, arousal = 0.1)
+# Event('CaughtSomeonesBluff','Caught someone bluffing', valence = 0.1, arousal = 0.1)
+Event('RoundLost','Lost the round', valence = -0.3, arousal = -0.1)
 Event('IClose2Win','Is close to win', valence = 0.1, arousal = 0.2)
 Event('SomeoneClose2Win','Someone is close to win', valence = -0.1, arousal = 0.2)
-Event('WonDoubt','Doubted someone and was right', valence = 0.1, arousal = 0.1) # ISSO EH A MESMA COISA QUE CaughtSomeonesBluff NEH?
-Event('LostDoubt','Doubted someone and was wrong', valence = -0.1, arousal = -0.1)
+# Event('WonDoubt','Doubted someone and was right', valence = 0.1, arousal = 0.1) # ISSO EH A MESMA COISA QUE CaughtSomeonesBluff NEH?
+# Event('LostDoubt','Doubted someone and was wrong', valence = -0.1, arousal = -0.1)
 Event('BluffOK','Bluffed and no one noticed', valence = 0.05, arousal = 0)
-Event('TimePass','Time passes', valence = 0, arousal = -0.05)
+Event('TimePass','Time passes', valence = 0, arousal = -0.1)
 
 
 #players = simulategames(1, True)
-players,winnerstats, winners = simulategames(1000,False, True)
+players,winnerstats, winners = simulategames(1000,False, False, False)
 plotWinnerStats(winnerstats, players, winners)
+# plotPlayersEmotion(players)
 # deck = Deck(2)
 # deck.printdeck()
 # players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
