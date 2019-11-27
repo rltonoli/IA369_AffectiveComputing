@@ -733,7 +733,14 @@ def prepareplayers(players):
 def simulategames(games=100, printstats=False):
     deck = Deck(2)
     #deck.printdeck()
-    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0.2, 0.8), uniform(0, 1)), emotion = Emotion(0, uniform(0.2, 0.8)) ,amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0,0,0,0,0,0], [0.9,0.7,0.9,0.7,0.9,0.7])]
+#    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0.2, 0.8), uniform(0, 1)), emotion = Emotion(0, uniform(0.2, 0.8)) ,amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0,0,0,0,0,0], [0.9,0.7,0.9,0.7,0.9,0.7])]
+    players = []
+    players.append(Player('Player1', personality = Personality(0.9,0.9, 0.1), emotion = Emotion(0, 0)))
+    players.append(Player('Player2', personality = Personality(0.9,0.1, 0.9), emotion = Emotion(0, 0)))
+    players.append(Player('Player3', personality = Personality(0.1,0.9, 0.9), emotion = Emotion(0, 0)))
+    players.append(Player('Player4', personality = Personality(0.5,0.5, 0.5), emotion = Emotion(0, 0)))
+    players.append(Player('Player5', personality = Personality(0.9,0.9, 0.9), emotion = Emotion(0, 0)))
+    players.append(Player('Player6', personality = Personality(0.1,0.1, 0.1), emotion = Emotion(0, 0)))
     winner = []
     winnerstats = []
     game = Game(players, deck)
@@ -741,7 +748,7 @@ def simulategames(games=100, printstats=False):
         prepareplayers(players)
         game = Game(players, deck)
         game.playgame(printstats=printstats)
-        # plotPlayersEmotion(players)
+#        plotPlayersEmotion(players)
         for player in players:
             if player.won == 1:
                 winner.append(player.name)
@@ -752,7 +759,7 @@ def simulategames(games=100, printstats=False):
     # plt.scatter([player.name for player in players], [player.won for player in players])
     # plt.show()
     # showresults(players)
-    return players, winnerstats
+    return players, winnerstats, winner
     #showresults(players)
 
 def plotPlayersEmotion(listofplayers):
@@ -782,7 +789,7 @@ def plotPlayersEmotion(listofplayers):
     plt.tight_layout()
     plt.show()
 
-def plotWinnerStats(stats, players):
+def plotWinnerStats(stats, players, winners):
     stats = np.asarray(stats, dtype=float)
     columns = 2
     rows = 3
@@ -807,6 +814,10 @@ def plotWinnerStats(stats, players):
     # axs[2,0].scatter(np.zeros(len(stats[:,4])),stats[:,4], alpha = 0.1)
     axs[2,0].hist(stats[:,4], bins=20)
     axs[2,0].set_title('Valence')
+    
+    wins = [winners.count('Player1'),winners.count('Player2'),winners.count('Player3'),winners.count('Player4'),winners.count('Player5'),winners.count('Player6')]
+    axs[2,1].bar(np.arange(1,7), wins)
+    axs[2,1].set_title('Winner')
     plt.tight_layout()
 
 #Events definition (adding names to create the log)
@@ -822,7 +833,9 @@ Event('BluffOK','Bluffed and no one noticed', valence = 0.05, arousal = 0)
 Event('TimePass','Time passes', valence = 0, arousal = -0.05)
 
 
-players = simulategames(1, True)
+#players = simulategames(1, True)
+players,winnerstats, winners = simulategames(1000,False)
+plotWinnerStats(winnerstats, players, winners)
 # deck = Deck(2)
 # deck.printdeck()
 # players = [Player('Player' + str(i+1), amountstrategy = j) for i,j in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'])]
