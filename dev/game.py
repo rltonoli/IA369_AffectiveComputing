@@ -186,10 +186,10 @@ class Player:
         # else:
         #     raise Exception
 
-    def chooseamountbluff(self, printstats=True):
+    def chooseamountbluff(self, maxcards=4, printstats=True):
 
         total = len(self.hand)
-        max = min(min(total, 4), len(self.hand))
+        max = min(total, maxcards)
         count = 1
 
         # # if the amount of cards in hand is greater that 1: calculate, else play 1 card
@@ -216,7 +216,7 @@ class Player:
 
         if not currentcard in self.hand: #bluff
             print('%s%s is bluffing%s' % (Color.purple, self.name, Color.clear))
-            amount = self.chooseamountbluff(printstats)
+            amount = self.chooseamountbluff(maxcards, printstats)
             cardstostack = []
             memorylimit = round(10 * self.personality.memory)
             cardsvisible = list(reversed(self.handvisible))[:memorylimit] # cards in memory
