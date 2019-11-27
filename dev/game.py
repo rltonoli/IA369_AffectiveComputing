@@ -266,7 +266,7 @@ class Player:
             if printstats:
                 print("Lying => cards: %s Memory: %s, Hand visible: %s" % (cardstostack, cardsvisible, handvisible))
 
-        elif Random.get(self.bluffchance()) == 0: #choose to bluff
+        elif Random.get(self.bluffchance()) == 1: #choose to bluff
             if printstats:
                 print('%s%s is bluffing (AROUSAL(%f) AND HASTE(%f) CONDITION)%s' % (Color.purple, self.name, (self.emotion.arousal+1)/2, self.personality.haste, Color.clear))
                 print('chance %f' % (self.bluffchance()))
