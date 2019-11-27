@@ -153,6 +153,9 @@ class Player:
             self.log_arousal.append(self.emotion.arousal)
         self.emotion.update(self.personality.selfcontrol, event)
 
+    def bluffchance(self):
+        return ((self.personality.haste + ((self.emotion.arousal+1)/2))/2)
+
     def pickcard(self):
         #Pick a card of the hand
         return choice(self.hand)
@@ -213,11 +216,49 @@ class Player:
     def gamble(self, currentcard, maxcards=4, printstats = True):
         #Pick a card (if it is the first npc to play)
         #and choose the amount of cards
+
         if not currentcard: #pick a card
             currentcard = self.pickcard()
 
         if not currentcard in self.hand: #bluff
             print('%s%s is bluffing%s' % (Color.purple, self.name, Color.clear))
+            amount = self.chooseamountbluff(printstats)
+            cardstostack = []
+            memorylimit = round(10 * self.personality.memory)
+            cardsvisible = list(reversed(self.handvisible))[:memorylimit] # cards in memory
+
+            # select only the cards that has frequency lower than 50% of the max count of cards
+            cardsvisible = [card for card in cardsvisible if cardsvisible.count(card) < 0.50 * maxcards]
+
+            # cards in hand that the player remember that other player has
+            handvisible = [card for card in self.hand if card in cardsvisible]
+            # sort the list by the element frequency
+            handvisible = sorted(handvisible, key=handvisible.count)
+
+            if amount > len(self.hand):
+                amount = len(self.hand)
+
+            while amount > 0:
+                for card in handvisible:
+                    if card in self.hand:
+                        self.hand.remove(card)
+                        cardstostack.append(card)
+                        amount = amount - 1
+
+                    if amount == 0:
+                        break
+
+                if amount > 0:
+                    bluffcard = self.hand.pop(choice(np.arange(len(self.hand))))  # pick one randomly
+                    cardstostack.append(bluffcard)
+                    amount = amount - 1
+
+            if printstats:
+                print("Lying => cards: %s Memory: %s, Hand visible: %s" % (cardstostack, cardsvisible, handvisible))
+
+        elif Random.get(self.bluffchance()) == 0: #choose to bluff
+            print('%s%s is bluffing (AROUSAL(%f) AND HASTE(%f) CONDITION)%s' % (Color.purple, self.name, (self.emotion.arousal+1)/2, self.personality.haste, Color.clear))
+            print('chance %f' % (self.bluffchance()))
             amount = self.chooseamountbluff(printstats)
             cardstostack = []
             memorylimit = round(10 * self.personality.memory)
