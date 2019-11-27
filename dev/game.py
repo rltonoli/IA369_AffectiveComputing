@@ -682,7 +682,7 @@ class Game:
                     player.react2event(Event.getEvent('IClose2Win'))
                 for player in player_notclose:
                     player.react2event(Event.getEvent('SomeoneClose2Win'))
-            
+
             self.rounds += 1
         return gameover
 
@@ -806,7 +806,7 @@ def plotPlayersEmotion(listofplayers):
 
         valence = (np.asarray(player.log_valence)+1)/2*yupperlimit
         arousal = (np.asarray(player.log_arousal)+1)/2*yupperlimit
-        
+
         ax2 = ax.twinx()
         ax2.set_ylim([-1,1])
         ax2.set_ylabel('Valence/Arousal')
@@ -848,7 +848,7 @@ def plotWinnerStats(stats, players, winners):
     # axs[2,0].scatter(np.zeros(len(stats[:,4])),stats[:,4], alpha = 0.1)
     axs[2,0].hist(stats[:,4], bins=20)
     axs[2,0].set_title('Valence')
-    
+
     wins = [winners.count('Player1'),winners.count('Player2'),winners.count('Player3'),winners.count('Player4'),winners.count('Player5'),winners.count('Player6')]
     axs[2,1].bar(np.arange(1,7), wins)
     axs[2,1].set_title('Winner')
@@ -856,7 +856,7 @@ def plotWinnerStats(stats, players, winners):
         ax.set_ylabel('Number of Wins')
         if i<3:
             ax.set_xticks([0,0.5,1])
-            ax.set_xlabel('Value')    
+            ax.set_xlabel('Value')
         elif i>=3 and i<5:
             ax.set_xlim([-1.05, 1.05])
             ax.set_xticks([-1,-0.5,0,0.5,1])
@@ -880,11 +880,7 @@ Event('TimePass','Time passes', valence = 0, arousal = -0.1)
 
 
 #players = simulategames(1, True)
-<<<<<<< HEAD
 players,winnerstats, winners = simulategames(1000,False, False, False)
-=======
-players,winnerstats, winners = simulategames(1,True, True)
->>>>>>> 06b92da5d92d918bfc0461f0abdb7fdcc7cb06d8
 plotWinnerStats(winnerstats, players, winners)
 # plotPlayersEmotion(players)
 # deck = Deck(2)
