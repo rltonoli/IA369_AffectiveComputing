@@ -221,7 +221,7 @@ class Player:
             currentcard = self.pickcard()
 
         if not currentcard in self.hand: #bluff
-            print('%s%s is bluffing%s' % (Color.purple, self.name, Color.clear))
+            if printstats: print('%s%s is bluffing%s' % (Color.purple, self.name, Color.clear))
             amount = self.chooseamountbluff(printstats)
             cardstostack = []
             memorylimit = round(10 * self.personality.memory)
@@ -257,8 +257,9 @@ class Player:
                 print("Lying => cards: %s Memory: %s, Hand visible: %s" % (cardstostack, cardsvisible, handvisible))
 
         elif Random.get(self.bluffchance()) == 0: #choose to bluff
-            print('%s%s is bluffing (AROUSAL(%f) AND HASTE(%f) CONDITION)%s' % (Color.purple, self.name, (self.emotion.arousal+1)/2, self.personality.haste, Color.clear))
-            print('chance %f' % (self.bluffchance()))
+            if printstats:
+                print('%s%s is bluffing (AROUSAL(%f) AND HASTE(%f) CONDITION)%s' % (Color.purple, self.name, (self.emotion.arousal+1)/2, self.personality.haste, Color.clear))
+                print('chance %f' % (self.bluffchance()))
             amount = self.chooseamountbluff(printstats)
             cardstostack = []
             memorylimit = round(10 * self.personality.memory)
@@ -619,18 +620,32 @@ class Game:
                         player.log_cardsamount.append(len(player.hand))
                     return True #Gameover
                 #Check if player is close to win (20% of the initial amount of cards received)
-                else:
-                    if len(self.lastPlayer.hand) <= 0.2*len(self.deck.cards)/len(self.players):
-                        self.lastPlayer.react2event(Event.getEvent('IClose2Win'))
-                        for others in [other for other in self.players if other != self.lastPlayer]:
-                            others.react2event(Event.getEvent('SomeoneClose2Win'))
+#                else:
+#                    if len(self.lastPlayer.hand) <= 0.2*len(self.deck.cards)/len(self.players):
+#                        self.lastPlayer.react2event(Event.getEvent('IClose2Win'))
+#                        for others in [other for other in self.players if other != self.lastPlayer]:
+#                            others.react2event(Event.getEvent('SomeoneClose2Win'))
 
                 if over: #If someone doubted, the round is over
                     break #Someone already doubted, leave FOR
 
+            player_close2win = []
+            player_notclose = []
             for player in orderPlayerList:
                 player.react2event(Event.getEvent('TimePass'))
                 player.log_cardsamount.append(len(player.hand))
+                #Check if one or more players are close to win
+                if len(player.hand) <= 0.2*len(self.deck.cards)/len(self.players):
+                    player_close2win.append(player)
+                else:
+                    player_notclose.append(player)
+            #If one or more players are close to win, react to that event
+            if len(player_close2win) > 0:
+                for player in player_close2win:
+                    player.react2event(Event.getEvent('IClose2Win'))
+                for player in player_notclose:
+                    player.react2event(Event.getEvent('SomeoneClose2Win'))
+            
             self.rounds += 1
         return gameover
 
