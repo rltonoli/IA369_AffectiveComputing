@@ -47,13 +47,19 @@ class Personality:
 class Emotion:
     def __init__(self, valence, arousal, frozen=False):
         self.valence = valence
+        self.i_valence = valence
         self.arousal = arousal
+        self.i_arousal = arousal
         self.frozen = frozen
 
     def update(self, selfcontrol, event):
         if not self.frozen:
             self.valence = clamp(self.valence + event.valence, -1, 1)
             self.arousal = clamp(self.arousal + event.arousal * (1 - selfcontrol), -1, 1)
+
+    def reset(self):
+        self.valence = self.i_valence
+        self.arousal = self.i_arousal
 
 class Event:
     events = []
@@ -118,7 +124,7 @@ class Player:
     #     self.bluffslost = 0
 
     # reset player game state when a new game start
-    def start(self):
+    def start(self, resetemotion=False):
         self.hand = []
         self.handvisible = []
 
@@ -133,6 +139,8 @@ class Player:
         self.log_arousal = []
         self.log_valence = []
         self.log_cardsamount = []
+        if resetemotion:
+            self.emotion.reset()
 
     def react2event(self, event):
         """
@@ -723,14 +731,14 @@ def showresults(players):
 
 
 # prepare players for the next game
-def prepareplayers(players):
+def prepareplayers(players, resetemotions=False):
     shuffle(players)
     for player in players:
         # reset player info from past game
-        player.start()
+        player.start(resetemotions)
 
 
-def simulategames(games=100, printstats=False):
+def simulategames(games=100, printstats=False, resetemotions=False):
     deck = Deck(2)
     #deck.printdeck()
 #    players = [Player('Player' + str(i+1), personality = Personality(uniform(0, 1), uniform(0.2, 0.8), uniform(0, 1)), emotion = Emotion(0, uniform(0.2, 0.8)) ,amountstrategy = strat, willtodoubt=doubt, willtobluff=bluff) for i,strat, doubt, bluff in zip(range(6),['random','random','cautious','cautious','aggressive','aggressive'], [0,0,0,0,0,0], [0.9,0.7,0.9,0.7,0.9,0.7])]
@@ -745,7 +753,7 @@ def simulategames(games=100, printstats=False):
     winnerstats = []
     game = Game(players, deck)
     for i in range(games):
-        prepareplayers(players)
+        prepareplayers(players, resetemotions)
         game = Game(players, deck)
         game.playgame(printstats=printstats)
 #        plotPlayersEmotion(players)
@@ -765,7 +773,7 @@ def simulategames(games=100, printstats=False):
 def plotPlayersEmotion(listofplayers):
     columns = 2
     rows = int(np.ceil(len(listofplayers)/columns))
-    fig, axs = plt.subplots(rows, columns, figsize=(5,8), dpi=150)
+    fig, axs = plt.subplots(rows, columns, figsize=(20,32), dpi=60)
     yupperlimit = max([max(player.log_cardsamount) for player in listofplayers])
     for ax, player, i in zip(axs.flat, listofplayers, range(len(listofplayers))):
         ax.plot(np.arange(len(player.log_cardsamount)), player.log_cardsamount, alpha=0.5, color='blue')
@@ -778,15 +786,15 @@ def plotPlayersEmotion(listofplayers):
         valence = (np.asarray(player.log_valence)+1)/2*yupperlimit
         arousal = (np.asarray(player.log_arousal)+1)/2*yupperlimit
 
-        ax.scatter(np.arange(len(valence)),valence, color='green', alpha=0.5)
-        ax.scatter(np.arange(len(arousal)),arousal, color='yellow', alpha=0.5)
-
+        ax.scatter(np.arange(len(valence)),valence, color='green', alpha=0.5, label='Valence')
+        ax.scatter(np.arange(len(arousal)),arousal, color='yellow', alpha=0.5, label='Arousal')
+        ax.legend()
         ax.set_title(player.name)
         ax.set_ylim([0,yupperlimit])
 
         if i==len(listofplayers):
             break
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.show()
 
 def plotWinnerStats(stats, players, winners):
@@ -798,7 +806,7 @@ def plotWinnerStats(stats, players, winners):
     # step = 2/bins # from -1 to 1
     # for a,v in zip(arousal, valence):
     #     a = 0
-    fig, axs = plt.subplots(rows, columns, figsize=(8,8), dpi=150)
+    fig, axs = plt.subplots(rows, columns, figsize=(6,6), dpi=100)
     # axs[0,0].scatter(np.zeros(len(stats[:,0])),stats[:,0], alpha = 0.1)
     axs[0,0].hist(stats[:,0],20)
     axs[0,0].set_title('Haste')
@@ -834,7 +842,7 @@ Event('TimePass','Time passes', valence = 0, arousal = -0.05)
 
 
 #players = simulategames(1, True)
-players,winnerstats, winners = simulategames(1000,False)
+players,winnerstats, winners = simulategames(1000,False, True)
 plotWinnerStats(winnerstats, players, winners)
 # deck = Deck(2)
 # deck.printdeck()
