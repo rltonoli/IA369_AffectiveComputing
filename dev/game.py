@@ -191,7 +191,7 @@ class Player:
         # else:
         #     raise Exception
 
-    def chooseamountbluff(self, maxcards=4, printstats=True):
+    def chooseamountbluff(self,printstats, maxcards=4 ):
 
         total = len(self.hand)
         max = min(total, maxcards)
@@ -221,8 +221,11 @@ class Player:
             currentcard = self.pickcard()
 
         if not currentcard in self.hand: #bluff
-            print('%s%s is bluffing%s' % (Color.purple, self.name, Color.clear))
-            amount = self.chooseamountbluff(maxcards, printstats)
+
+            if printstats:
+                print('%s%s is bluffing%s' % (Color.purple, self.name, Color.clear))
+            amount = self.chooseamountbluff(printstats)
+
             cardstostack = []
             memorylimit = round(10 * self.personality.memory)
             cardsvisible = list(reversed(self.handvisible))[:memorylimit] # cards in memory
@@ -257,8 +260,9 @@ class Player:
                 print("Lying => cards: %s Memory: %s, Hand visible: %s" % (cardstostack, cardsvisible, handvisible))
 
         elif Random.get(self.bluffchance()) == 0: #choose to bluff
-            print('%s%s is bluffing (AROUSAL(%f) AND HASTE(%f) CONDITION)%s' % (Color.purple, self.name, (self.emotion.arousal+1)/2, self.personality.haste, Color.clear))
-            print('chance %f' % (self.bluffchance()))
+            if printstats:
+                print('%s%s is bluffing (AROUSAL(%f) AND HASTE(%f) CONDITION)%s' % (Color.purple, self.name, (self.emotion.arousal+1)/2, self.personality.haste, Color.clear))
+                print('chance %f' % (self.bluffchance()))
             amount = self.chooseamountbluff(printstats)
             cardstostack = []
             memorylimit = round(10 * self.personality.memory)
@@ -328,6 +332,7 @@ class Player:
             print('Is the next player=%s (next=%s)' % (isNext, nextPlayer.name))
             print('%s(current) visible cards %s' % (currentPlayer.name, currentPlayerCards))
             print('%s(current) arousal is %s' % (currentPlayer.name, currentPlayer.emotion.arousal))
+            print('%s(current) valence is %s' % (currentPlayer.name, currentPlayer.emotion.valence))
             print('Cards on people=%s, Cards on %s=%s, Total of cards=%s, Cards played=%s, Which cards played=%s' % (viewdPlayersCards, currentPlayer.name, viewdCurrentCards, possibleCards, manyCards, currentcard))
 
 
@@ -353,6 +358,12 @@ class Player:
                 print('%s%s knows that %s is telling truth%s' % (Color.green, self.name, currentPlayer.name, Color.clear))
                 print('%sEnd Evaluate doubt%s' % (Color.blue, Color.clear))
             return False
+        elif currentPlayer.emotion.arousal > 0 and Random.get(currentPlayer.emotion.arousal) == 1  and currentPlayer.emotion.valence < 0: #make chance to doubt from player with high and positive arousal
+            if printstats:
+                print('%s%s doubt %s based on arousal(%s)%s' % (Color.blue, self.name, currentPlayer.name, currentPlayer.emotion.arousal, Color.clear))
+                print('%s%s valence is %s%s' % (Color.blue, currentPlayer.name, currentPlayer.emotion.valence,  Color.clear))
+                print('%sEnd Evaluate doubt%s' % (Color.blue, Color.clear))
+            return True
         else: #that is the real doubt, now he'll evalate if will doubt or believe
             doubtPercent = ((self.emotion.arousal + 1) / 2) * ((manyCards - viewdCurrentCards) / (possibleCards - viewdPlayersCards))
             if printstats:
@@ -360,7 +371,8 @@ class Player:
                 print('%s%s dont know%s' % (Color.cyan, self.name, Color.clear))
                 print('chance to doubt %f' % doubtPercent)
             doubt = Random.get(doubtPercent)
-            if printstats: print('result from random %i' % doubt)
+            if printstats:
+                print('result from random %i' % doubt)
             if doubt==0:
                 if printstats:
                     print('%swill believe%s' % (Color.green, Color.clear))
