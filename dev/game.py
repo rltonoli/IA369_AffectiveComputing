@@ -582,8 +582,8 @@ class Game:
                         nextPlayer = orderPlayerList[0]
                     else:
                         nextPlayer = orderPlayerList[orderedIndex+1]
-                    #Shuffle the list (so that not the same player doubts every time)
-                    shuffle(doubting_player)
+                    # sort the list by the player probability to doubt
+                    self.sortbyhaste2doubt(doubting_player)
                     #Check if player from the list wants to doubt
                     for d_player in doubting_player:
                         #Get list of players that are NOT the current player and NOT the player evaluating the doubt
