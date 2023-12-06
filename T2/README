@@ -1,0 +1,24 @@
+IA 369 - Computação Afetiva 2S2019
+Rodolfo Luis Tonoli RA 105652
+T2 Análise de Sentimentos em Textos
+
+
+Instruções para executar o código
+
+1. Dependências
+Com Anaconda:
+O arquivo "ambiente.yml" contém uma cópia do ambiente de desenvolvimento. No Prompt de Comando do Anaconda, navegue até a pasta onde se encontra o arquivo e execute:
+conda env create -f environment.yml
+Acesse o ambiente através do comando
+conda activate myenv
+
+Sem Anaconda:
+Instalar as bibliotecas
+    Python = 3.6.7
+    Numpy = 1.16.5
+    Nltk = 3.4.4
+    Jupyterlab = 1.1.4
+    Matplotlib = 3.1.1
+
+2. Executar o jupyter notebook, navegar até a pasta do notebook "project.ipynb" e abrir o notebook.
+Atenção: A execução de todas as células do notebook vai demorar vários minutos
